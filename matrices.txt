@@ -1,0 +1,225 @@
+
+convert inverse bind matrix to rotation, scale and translate
+
+i = np.array([[1.331581E-06,-5.551115E-17,1,-2.230549],[1,-4.16881E-11,-1.331581E-06,-0.03756041],[4.16881E-11,1,8.412415E-23,-37.46099],[0,0,0,1]])
+
+
+[ a b c d ]
+[ e f g h ]
+[ i j k l ]
+[ 0 0 0 1 ]
+
+[ 1.331581e-06, -5.551115e-17,  1.000000e+00, -2.230549e+00]
+[ 1.000000e+00, -4.168810e-11, -1.331581e-06, -3.756041e-02]
+[ 4.168810e-11,  1.000000e+00,  8.412415e-23, -3.746099e+01]
+[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  1.000000e+00]
+
+t = [ d h l ]
+t = np.array([-2.230549e+00, -3.756041e-02, -3.746099e+01])
+
+
+sx = || [ a e i ] ||   np.linalg.norm(np.array([1.331581e-06, 1.000000e+00, 4.168810e-11]))
+sy = || [ b f j ] ||   np.linalg.norm(np.array([-5.551115e-17, -4.168810e-11, 1.000000e+00]))
+sz = || [ c g k ] ||   np.linalg.norm(np.array([1.000000e+00, -1.331581e-06, 8.412415e-23]))
+s = [ sx sy sz ]       s = np.array([1,1,1])
+
+
+r =  [ a/sx b/sy c/sz ]
+     [ e/sx f/sy g/sz ]
+     [ i/sx j/sy k/sz ]
+
+r0 = np.array([[ 1.331581e-06, -5.551115e-17,  1.000000e+00,],
+               [ 1.000000e+00, -4.168810e-11, -1.331581e-06],
+               [ 4.168810e-11,  1.000000e+00,  8.412415e-23]])
+
+r = r0 / s
+
+
+p = np.array([11,12,13,1])
+>>> i.dot(p)
+array([ 10.76946565,  10.96242228, -25.46099   ,   1.        ])
+
+p = np.array([11,12,13])
+>>> r.dot(p) + t
+array([ 10.76946565,  10.96242228, -25.46099   ])
+
+
+
+-----
+
+angle
+
+# Checks if a matrix is a valid rotation matrix.
+def isRotationMatrix(R) :
+    Rt = np.transpose(R)
+    shouldBeIdentity = np.dot(Rt, R)
+    I = np.identity(3, dtype = R.dtype)
+    n = np.linalg.norm(I - shouldBeIdentity)
+    return n < 1e-6
+
+# Calculates rotation matrix to euler angles
+# The result is the same as MATLAB except the order
+# of the euler angles ( x and z are swapped ).
+def rotationMatrixToEulerAngles(R):
+
+    assert(isRotationMatrix(R))
+
+    sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+
+    singular = sy < 1e-6
+
+    if  not singular :
+        x = math.atan2(R[2,1] , R[2,2])
+        y = math.atan2(-R[2,0], sy)
+        z = math.atan2(R[1,0], R[0,0])
+    else :
+        x = math.atan2(-R[1,2], R[1,1])
+        y = math.atan2(-R[2,0], sy)
+        z = 0
+
+    return np.array([x, y, z])
+
+
+
+from scipy.spatial.transform import Rotation as R
+
+m = np.array([[0, -1, 0],
+              [1,  0, 0],
+              [0,  0, 1]])
+
+
+r = R.from_matrix(m).as_euler('xyz', degrees=True)
+r = np.array([90.,  0.,  0.])
+
+
+
+360 = 4096
+b = r * 4096/ 360
+r = np.array([   0.,    0., 1024.])
+
+
+
+--------
+
+m = np.array([[1,2,3,4], [5,6,7,8], [9,10,11,12], [0, 0, 0, 1]])
+p = np.array([1,2,3, 1])
+>>> m.dot(p)
+array([18, 46, 74,  1])
+
+p = np.array([1,2,3])
+t = np.array([4,8,12])
+r = np.array([[1,2,3],[5,6,7],[9,10,11]])
+>>> r.dot(p) + t
+array([18, 46, 74])
+
+
+
+
+
+
+m = np.array([[0, 0, 1],  # from inverse bind matrix in soldier.m3d
+              [1, 0, 0],
+              [0, 1, 0]])
+
+WRONG
+r = R.from_matrix(r0).as_euler('xyz', degrees=True)
+setVector(&r, 1024, 0, 1023);
+6 0 4096
+-4096 0 6
+0 -4096 0
+
+
+
+CORRECT :
+r = R.from_matrix(r0).as_euler('zyx', degrees=True)
+setVector(&r, 1024, 0, 1023);
+0 4096 0
+-6 0 4096
+4096 0 6
+
+
+
+
+
+---
+
+m = np.array([[ 0, -1,  0],
+              [ 1,  0,  0],
+              [ 0,  0,  1]])
+
+
+a b c
+d e f
+g h i
+
+    0 4096    0
+-4096    0    0
+    0    0 4096
+
+
+a d g
+b e h
+c f i
+
+r = R.from_matrix(m).as_euler('xyz', degrees=True)
+0 4096 0
+-4096 0 0
+0 0 4096
+r = R.from_matrix(m).as_euler('zxy', degrees=True)
+4096 0 0
+0 0 4096
+0 -4096 0
+
+
+
+
+
+---------------
+
+
+
+VECTOR pos;
+MATRIX omtx;
+VECTOR returnPos;
+VECTOR Translate (SVECTOR rot, int x, int y, int z) {
+
+    pos.vx = x;
+    pos.vy = y;
+    pos.vz = z;
+
+    RotMatrix(&rot, &omtx);
+
+    ApplyMatrixLV(&omtx, &pos, &returnPos);
+
+    return returnPos;
+
+}
+
+//A vector to store your new position
+VECTOR newVec;
+
+//This takes the object's rotation and a local direction.
+//In this case the Z axis is the object's forward direction.
+//So 0, 0, 1 is forward
+//0, 1, 0 is up
+//and 1, 0, 0 is sideways
+//you can replace the 1 with the speed you want your object to move
+
+newVec = Translate(shuttle.rotation, 0, 0, 1 * ONE/500);
+yourObject.position.vx += newVec.vx;
+yourObject.position.vy += newVec.vy;
+
+
+---------------
+
+
+In one of my 3D test programs, this is what I did to manually adjust aspect ratio and a first-person camera:
+
+```
+RotMatrix(&camRot, &viewMtx);
+ScaleMatrixL(&viewMtx, &viewScale);
+ApplyMatrixLV(&viewMtx, &camPos, &vec);
+TransMatrix(&viewMtx, &vec);
+```
+
+camRot and camPos are vector coordinates of the camera's position and angle, viewScale is the scale factor you can use to manually adjust the aspect ratio to the view matrix, viewMtx is your view matrix.

@@ -1,0 +1,91 @@
+***************m3d-File-Header***************
+#Materials 5
+#Vertices 13748
+#Triangles 22507
+#Bones 58
+#AnimationClips 1
+
+***************Materials*********************
+Name: soldier_head
+Diffuse: 1 1 1
+Fresnel0: 0.05 0.05 0.05
+Roughness: 0.5
+AlphaClip: 0
+MaterialTypeName: Skinned
+DiffuseMap: head_diff.dds
+NormalMap: head_norm.dds
+
+...
+
+***************SubsetTable******************* // one subset for one material
+SubsetID: 0 VertexStart: 0 VertexCount: 3915 FaceStart: 0 FaceCount: 7230
+SubsetID: 1 VertexStart: 3915 VertexCount: 2984 FaceStart: 7230 FaceCount: 4449
+SubsetID: 2 VertexStart: 6899 VertexCount: 4270 FaceStart: 11679 FaceCount: 6579
+SubsetID: 3 VertexStart: 11169 VertexCount: 2305 FaceStart: 18258 FaceCount: 3807
+SubsetID: 4 VertexStart: 13474 VertexCount: 274 FaceStart: 22065 FaceCount: 442
+
+***************Vertices**********************
+Position: -0.9983482 67.88861 4.354969
+Tangent: -0.257403 0.5351538 -0.8045831 1
+Normal: 0.5368453 0.7715151 0.3414111
+Tex-Coords: 0.695366 0.9909569
+BlendWeights: 0.7470379 0.2529621 0 0
+BlendIndices: 7 9 0 0
+
+Position: -0.8930981 67.9022 4.388191
+Tangent: 0.6117722 0.7648141 -0.2019754 1
+Normal: -0.4419364 0.542224 0.7146226
+Tex-Coords: 0.69473 0.983095
+BlendWeights: 0.7382242 0.2617758 0 0
+BlendIndices: 7 9 0 0
+
+...
+
+***************Triangles*********************
+0 1 2
+3 4 5
+6 7 8
+9 10 11
+12 13 14
+15 16 17
+18 19 20
+19 18 21
+21 22 19
+...
+
+***************BoneOffsets*******************
+BoneOffset0 1.331581E-06 1 4.16881E-11 0 -5.551115E-17 -4.16881E-11 1 0 1 -1.331581E-06 8.412415E-23 0 -2.230549 -0.03756041 -37.46099 1
+BoneOffset1 4.16881E-11 2.757707E-06 1 0 1 -2.25986E-16 -4.16881E-11 0 2.220447E-16 1 -2.757707E-06 0 -37.46099 -1.274681 -0.03755855 1
+BoneOffset2 1.240504E-06 -1.274266E-06 1 0 0.9954989 0.09477358 -1.114154E-06 0 -0.09477358 0.9954989 1.386098E-06 0 -40.94087 -5.174486 -0.03752297 1
+BoneOffset3 1.039812E-06 -1.164522E-06 1 0 0.9807496 0.1952691 -7.924001E-07 0 -0.1952691 0.9807496 1.345148E-06 0 -44.72502 -9.758175 -0.03753753 1
+BoneOffset4 1.157876E-06 -1.285339E-06 1 0 0.9952906 0.09693625 -1.027826E-06 0 -0.09693625 0.9952906 1.391526E-06 0 -49.99409 -4.814983 -0.03752576 1
+...
+
+***************BoneHierarchy*****************
+ParentIndexOfBone0: -1
+ParentIndexOfBone1: 0
+ParentIndexOfBone2: 1
+ParentIndexOfBone3: 2
+...
+
+***************AnimationClips****************
+AnimationClip Take1
+{
+    Bone0 #Keyframes: 76
+    {
+        Time: 0 Pos: 0.03756343 37.46099 2.230549 Scale: 1 1 1 Quat: -0.5000003 -0.4999996 -0.4999996 0.5000004
+        Time: 0.0166666 Pos: 0.03756343 37.46099 2.230549 Scale: 1 1 1 Quat: -0.5000003 -0.4999996 -0.4999996 0.5000004
+        Time: 0.0333333 Pos: 0.03756343 37.46099 2.230549 Scale: 1 1 1 Quat: -0.5000003 -0.4999996 -0.4999996 0.5000004
+        Time: 0.05 Pos: 0.03756343 37.46099 2.230549 Scale: 1 1 1 Quat: -0.5000003 -0.4999996 -0.4999996 0.5000004
+        ...
+    }
+    Bone1 #Keyframes: 76
+    {
+        Time: 0 Pos: -0.5862113 -0.06803528 -0.06857681 Scale: 1 1 1 Quat: 0.4598411 -0.5545887 0.4610625 0.5180722
+        Time: 0.0166666 Pos: -0.5728644 -0.276429 -0.06752014 Scale: 0.9999999 1 1 Quat: 0.4572482 -0.5526819 0.4629614 0.520705
+        Time: 0.0333333 Pos: -0.5844057 -0.4848228 -0.06646347 Scale: 1 1 1 Quat: 0.4552799 -0.5505438 0.4642273 0.5235596
+        Time: 0.05 Pos: -0.5983974 -0.6908427 -0.06014633 Scale: 0.9999999 1 1 Quat: 0.4547104 -0.5482643 0.4657928 0.5250542
+        ...
+    }
+    ...
+}
