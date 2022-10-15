@@ -348,3 +348,4 @@ vendor/SDL2/*
 vendor/glm/*
 !vendor/glm/.keep
 
+*.bin
