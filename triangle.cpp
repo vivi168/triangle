@@ -50,7 +50,7 @@ typedef struct skinned_vertex_t {
 
 struct MeshHeader {
     int numVerts;
-    int numFaces;
+    int numIndices;
 };
 
 struct Mesh {
@@ -77,50 +77,26 @@ float delta_time;
 bool quit = false;
 InputManager &input_mgr = InputManager::instance();
 
-static const float vertices[] = {
-    -0.5,0.0,0.0,
-    0.5,0.0,0.0,
-    -0.5,0.5,0.0,
-    0.5,0.5,0.0,
-    -0.5,1.0,0.0,
-    0.5,1.0,0.0,
-    -0.5,1.5,0.0,
-    0.5,1.5,0.0,
-    -0.5,2.0,0.0,
-    0.5,2.0,0.0,
-};
-
-static const GLuint indices[] = {
-    0,1,3,
-    0,3,2,
-    2,3,5,
-    2,5,4,
-    4,5,7,
-    4,7,6,
-    6,7,9,
-    6,9,8,
-};
-
 void read_mesh(Mesh* m, char const* filename)
 {
     FILE* fp;
     fopen_s(&fp, filename, "rb");
     fread(&m->header, sizeof(MeshHeader), 1, fp);
 
-    printf("%d, %d\n", m->header.numVerts, m->header.numFaces);
+    printf("%d, %d\n", m->header.numVerts, m->header.numIndices / 3);
 
     m->verts = (Vertex*)malloc(sizeof(Vertex) * m->header.numVerts);
-    m->indices = (int*)malloc(sizeof(int) * m->header.numFaces * 3);
+    m->indices = (int*)malloc(sizeof(int) * m->header.numIndices);
 
     fread(m->verts, sizeof(Vertex), m->header.numVerts, fp);
-    fread(m->indices, sizeof(int) * 3, m->header.numFaces, fp);
+    fread(m->indices, sizeof(int), m->header.numIndices, fp);
 
     for (int i = 0; i < m->header.numVerts; i++)
         printf("pos: (%f %f %f) uv: [%f %f]\n", 
             m->verts[i].position.x, m->verts[i].position.y, m->verts[i].position.z,
             m->verts[i].uv.x, m->verts[i].uv.y);
 
-    for (int i = 0; i < m->header.numFaces * 3; i+=3)
+    for (int i = 0; i < m->header.numIndices; i+=3)
         printf("%d %d %d\n", m->indices[i], m->indices[i+1], m->indices[i+2]);
 }
 
@@ -267,15 +243,12 @@ void init_mesh()
     glBindVertexArray(mesh.vertex_array_obj);
 
     glBindBuffer(GL_ARRAY_BUFFER, mesh.vertex_buffer_obj);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices[0], GL_STATIC_DRAW);
     glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m.header.numVerts, &m.verts[0], GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.element_buffer_obj);
-    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices[0], GL_STATIC_DRAW);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * m.header.numFaces * 3, &m.indices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * m.header.numIndices, &m.indices[0], GL_STATIC_DRAW);
 
     // vertex position (location 0)
-    //glVertexAttribPointer(VERTEX_LOC, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (GLvoid*)0);
     glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
     glEnableVertexAttribArray(POSITION_LOC);
 
@@ -306,7 +279,7 @@ void init()
 
     // init model
     {
-        mymodel.translate = glm::vec3(0.0f, -1.0f, 0.0f);
+        mymodel.translate = glm::vec3(0.0f, -3.0f, 0.0f);
         mymodel.scale = glm::vec3(1.0f, 1.0f, 1.0f);
     }
 }
@@ -338,8 +311,7 @@ void render()
     glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
 
     glBindVertexArray(mesh.vertex_array_obj);
-    //glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
-    glDrawElements(GL_TRIANGLES, sizeof(int) * m.header.numFaces * 3 / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, sizeof(int) * m.header.numIndices / 3, GL_UNSIGNED_INT, 0);
 
     SDL_GL_SwapWindow(sdl_window);
 }
@@ -381,8 +353,6 @@ int main(int argc, char **argv)
 {
     read_mesh(&m, "assets/model.bin");
     init();
-
-
 
     mainloop();
 

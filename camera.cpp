@@ -9,7 +9,7 @@ const float SENSITIVITY = 0.002f;
 const float ZOOM = glm::quarter_pi<float>();
 
 Camera::Camera()
-    : position({ 0.0f, 0.0f, 5.0f })
+    : position({ 0.0f, 0.0f, 10.0f })
     , yaw(YAW)
     , pitch(PITCH)
     , world_up({ 0.0f, 1.0f, 0.0f })

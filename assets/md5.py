@@ -111,6 +111,9 @@ class Triangle:
         return '{} {} {}'.format(
             self.vertIndices[0], self.vertIndices[1], self.vertIndices[2])
 
+    def pack(self):
+        return struct.pack('<iii', self.vertIndices[0], self.vertIndices[1], self.vertIndices[2])
+
 class Weight:
     def __init__(self, jointIndex=0, bias=0, pos=None):
         self.jointIndex = jointIndex
@@ -135,19 +138,7 @@ class Mesh:
         self.numWeights = 0
         self.weights = []
 
-# For output data
-class OVertex:
-    def __init__(self, pos=Vec3(), st=Vec2()):
-        self.pos = pos
-        self.uv = st
-
-    def pack(self):
-        # here invert y & z (y up)
-        posData = struct.pack('<fff', self.pos.x, self.pos.z, self.pos.y)
-        uvData = struct.pack('<ff', self.uv.x, self.uv.y)
-        return posData + uvData
-
-class OSkinnedVertex:
+class SkinnedVertex:
     def __init__(self, pos=Vec3(), st=Vec2(), bi=[], bw=[]):
         self.pos = pos
         self.uv = st
@@ -155,22 +146,19 @@ class OSkinnedVertex:
         self.boneWeights = bw
 
     def pack(self):
-        posData = struct.pack('<fff', self.pos.x, self.pos.y, self.pos.z)
+        posData = struct.pack('<fff', self.pos.x, self.pos.z, self.pos.y)
         uvData = struct.pack('<ff', self.uv.x, self.uv.y)
+        return posData + uvData
+
+    def packSkinned(self):
         boneIndicesData = bytearray()
         boneWeightsData = bytearray()
         for i in self.boneIndices:
             boneIndicesData += struct.pack('<i', i)
         for f in self.boneWeights:
             boneWeightsData += struct.pack('<f', f)
-        return posData + uvData + boneIndicesData + boneWeightsData
+        return self.pack() + boneIndicesData + boneWeightsData
 
-class OFace:
-    def __init__(self, vertIndices=[]):
-        self.vertIndices = vertIndices
-
-    def pack(self):
-        return struct.pack('<iii', self.vertIndices[0], self.vertIndices[1], self.vertIndices[2])
 
 class MD5Model:
     def __init__(self):
@@ -255,7 +243,6 @@ class MD5Model:
         return self
 
     def prepareMesh(self, m):
-        o_faces = []
         o_vertices = []
 
         for v in m.vertices:
@@ -273,26 +260,23 @@ class MD5Model:
                 finalPos.y += (joint.pos.y + wv.y) * w.bias
                 finalPos.z += (joint.pos.z + wv.z) * w.bias
 
-            o_vertices.append(OVertex(finalPos, v.st))
+            o_vertices.append(SkinnedVertex(finalPos, v.st))
 
-        for t in m.tris:
-            o_faces.append(OFace(t.vertIndices))
-
+        
         vertData = bytearray()
         faceData = bytearray()
         for v in o_vertices:
             vertData += v.pack()
-        for f in o_faces:
-            faceData += f.pack()
+        for t in m.tris:
+            faceData += t.pack()
         
-        headerData = struct.pack('<ii', len(o_vertices), len(o_faces))
+        print(m.numVerts, m.numTris * 3)
+        headerData = struct.pack('<ii', m.numVerts, m.numTris * 3)
         with open('model.bin', 'wb') as f:
             f.write(headerData + vertData + faceData)
 
     def to_MDL(self, binary=False):
         for m in self.meshes:
-            print(m.numVerts)
-            print(m.numTris)
             self.prepareMesh(m)
 
 class MD5Anim:
