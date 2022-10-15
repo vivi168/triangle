@@ -25,14 +25,17 @@ class Quaternion:
         self.y = y
         self.z = z
 
-        t = 1.0 - (x*x) - (y*y) - (z*z)
+        self.computeW()
+
+    def __str__(self):
+        return '{:.6f} {:.6f} {:.6f} {:.6f}'.format(self.x, self.y, self.z, self.w)
+
+    def computeW(self):
+        t = 1.0 - (self.x**2) - (self.y**2) - (self.z**2)
         if (t < 0.0):
             self.w = 0.0
         else:
             self.w = -np.sqrt(t)
-
-    def __str__(self):
-        return '{:.6f} {:.6f} {:.6f} {:.6f}'.format(self.x, self.y, self.z, self.w)
 
     def rotatePoint(self, pos):
         inv = Quaternion()
@@ -78,6 +81,12 @@ class Quaternion:
         out.z =   (self.w * v.z) + (self.x * v.y) - (self.y * v.x)
 
         return out
+
+    def dotProduct(self, qb):
+        pass
+
+    def slerp(self, qb, t):
+        pass
 
 class Joint:
     def __init__(self, name='', parent=0, pos=None, orient=None):
@@ -166,11 +175,9 @@ class MD5Model:
         self.numMeshes = 0
         self.joints = []
         self.meshes = []
+        # TODO: bounding boxes ?
 
     def from_file(self, filename):
-        reading_joints = False
-        reading_mesh = False
-
         with open(filename) as rawfile:
             while True:
                 line = rawfile.readline()
@@ -242,6 +249,10 @@ class MD5Model:
                                 pos)
         return self
 
+    def export(self):
+        for m in self.meshes:
+            self.prepareMesh(m)
+
     def prepareMesh(self, m):
         o_vertices = []
 
@@ -272,17 +283,26 @@ class MD5Model:
         
         print(m.numVerts, m.numTris * 3)
         headerData = struct.pack('<ii', m.numVerts, m.numTris * 3)
+        # TODO: write one file for each mesh in the model
         with open('model.bin', 'wb') as f:
             f.write(headerData + vertData + faceData)
 
-    def to_MDL(self, binary=False):
-        for m in self.meshes:
-            self.prepareMesh(m)
-
 class MD5Anim:
-    pass
+    def __init__(self):
+        pass
+
+    def from_file(self, filename):
+        with open(filename) as rawfile:
+            pass
+
+    def export(self):
+        pass
 
 if __name__ == '__main__':
     model = MD5Model()
     model.from_file('cubeguy.md5mesh')
-    model.to_MDL()
+    model.export()
+
+    anim = MD5Anim()
+    anim.from_file('running.md5anim')
+    anim.export()
