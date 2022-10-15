@@ -1,4 +1,3 @@
-from re import VERBOSE
 import numpy as np
 import parse
 import struct

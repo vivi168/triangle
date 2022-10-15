@@ -101,32 +101,6 @@ static const GLuint indices[] = {
     6,9,8,
 };
 
-static const float weights[] = {
-    1.0, 0.0, 0.0, 0.0,
-    1.0, 0.0, 0.0, 0.0,
-    0.75, 0.25, 0.0, 0.0,
-    0.75, 0.25, 0.0, 0.0,
-    0.5, 0.5, 0.0, 0.0,
-    0.5, 0.5, 0.0, 0.0,
-    0.25, 0.75, 0.0, 0.0,
-    0.25, 0.75, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-};
-
-static const GLuint bone_ids[] = {
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 1, 0, 0,
-    0, 1, 0, 0,
-    0, 1, 0, 0,
-    0, 1, 0, 0,
-    0, 1, 0, 0,
-    0, 1, 0, 0,
-    0, 1, 0, 0,
-};
-
 void read_mesh(Mesh* m, char const* filename)
 {
     FILE* fp;
@@ -278,8 +252,7 @@ void load_shader()
 }
 
 typedef enum location_t {
-    VERTEX_LOC = 0,
-    NORMAL_LOC,
+    POSITION_LOC = 0,
     UV_LOC,
     BONE_IDS_LOC,
     WEIGHT_IDS_LOC
@@ -294,14 +267,17 @@ void init_mesh()
     glBindVertexArray(mesh.vertex_array_obj);
 
     glBindBuffer(GL_ARRAY_BUFFER, mesh.vertex_buffer_obj);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices[0], GL_STATIC_DRAW);
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m.header.numVerts, &m.verts[0], GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.element_buffer_obj);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices[0], GL_STATIC_DRAW);
+    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * m.header.numFaces * 3, &m.indices[0], GL_STATIC_DRAW);
 
     // vertex position (location 0)
-    glVertexAttribPointer(VERTEX_LOC, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (GLvoid*)0);
-    glEnableVertexAttribArray(VERTEX_LOC);
+    //glVertexAttribPointer(VERTEX_LOC, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (GLvoid*)0);
+    glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
+    glEnableVertexAttribArray(POSITION_LOC);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -349,18 +325,21 @@ void render()
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     glUseProgram(program);
+    glm::mat4 mvp;
 
-    glm::mat4 p = glm::perspective(camera.zoom(), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 1000.0f);
-    glm::mat4 v = camera.look_at();
-    glm::mat4 m = model_mat(&mymodel);
-    glm::mat4 mvp = p * v * m;
-
+    {
+        glm::mat4 p = glm::perspective(camera.zoom(), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 1000.0f);
+        glm::mat4 v = camera.look_at();
+        glm::mat4 m = model_mat(&mymodel);
+        mvp = p * v * m;
+    }
 
     GLuint mvp_loc = glGetUniformLocation(program, "mvp");
     glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
 
     glBindVertexArray(mesh.vertex_array_obj);
-    glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+    //glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, sizeof(int) * m.header.numFaces * 3 / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
     SDL_GL_SwapWindow(sdl_window);
 }
@@ -400,9 +379,10 @@ void mainloop()
 
 int main(int argc, char **argv)
 {
+    read_mesh(&m, "assets/model.bin");
     init();
 
-    read_mesh(&m, "assets/model.bin");
+
 
     mainloop();
 
