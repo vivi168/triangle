@@ -23,9 +23,9 @@
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 
-typedef struct mesh_t {
+typedef struct gl_mesh_t {
     GLuint vertex_array_obj, vertex_buffer_obj, element_buffer_obj;
-} Mesh;
+} GlMesh;
 
 typedef struct model_t {
     // char* filename;
@@ -34,16 +34,31 @@ typedef struct model_t {
     glm::vec3 scale;
 } Model;
 
-#define MAX_BONE 4
-
 typedef struct vertex_t {
     glm::vec3 position;
-    glm::vec3 normal;
+    glm::vec2 uv;
+} Vertex;
+
+#define MAX_BONE 4
+typedef struct skinned_vertex_t {
+    glm::vec3 position;
     glm::vec2 uv;
 
     int bone_ids[MAX_BONE];
     int weights[MAX_BONE];
-} Vertex;
+} SkinnedVertex;
+
+struct MeshHeader {
+    int numVerts;
+    int numFaces;
+};
+
+struct Mesh {
+    MeshHeader header;
+
+    Vertex* verts;
+    int* indices;
+};
 
 SDL_Window* sdl_window;
 SDL_GLContext context;
@@ -55,7 +70,8 @@ Uint32 current_time;
 
 Camera camera;
 Model mymodel;
-Mesh mesh;
+GlMesh mesh;
+Mesh m;
 
 float delta_time;
 bool quit = false;
@@ -111,6 +127,29 @@ static const GLuint bone_ids[] = {
     0, 1, 0, 0,
 };
 
+void read_mesh(Mesh* m, char const* filename)
+{
+    FILE* fp;
+    fopen_s(&fp, filename, "rb");
+    fread(&m->header, sizeof(MeshHeader), 1, fp);
+
+    printf("%d, %d\n", m->header.numVerts, m->header.numFaces);
+
+    m->verts = (Vertex*)malloc(sizeof(Vertex) * m->header.numVerts);
+    m->indices = (int*)malloc(sizeof(int) * m->header.numFaces * 3);
+
+    fread(m->verts, sizeof(Vertex), m->header.numVerts, fp);
+    fread(m->indices, sizeof(int) * 3, m->header.numFaces, fp);
+
+    for (int i = 0; i < m->header.numVerts; i++)
+        printf("pos: (%f %f %f) uv: [%f %f]\n", 
+            m->verts[i].position.x, m->verts[i].position.y, m->verts[i].position.z,
+            m->verts[i].uv.x, m->verts[i].uv.y);
+
+    for (int i = 0; i < m->header.numFaces * 3; i+=3)
+        printf("%d %d %d\n", m->indices[i], m->indices[i+1], m->indices[i+2]);
+}
+
 glm::mat4 model_mat(Model* m)
 {
     glm::mat4 model = glm::mat4(1.0f);
@@ -165,7 +204,7 @@ void create_window()
     }
 }
 
-const char* read_file(char const* filename)
+const char* read_shader(char const* filename)
 {
     char *buffer;
     size_t len;
@@ -174,7 +213,8 @@ const char* read_file(char const* filename)
     fopen_s(&f, filename, "rb");
 
     if (!f) {
-        // error handling
+        // TODO: error handling
+        return NULL;
     }
 
     fseek(f, 0, SEEK_END);
@@ -183,7 +223,8 @@ const char* read_file(char const* filename)
     buffer = (char*)malloc(len);
 
     if (!buffer) {
-        // error handling
+        // TODO: error handling
+        return NULL;
     }
 
     fread(buffer, 1, len, f);
@@ -196,8 +237,8 @@ void load_shader()
 {
     int success;
     char info_log[1024];
-    const char* vert_code = read_file("vert.glsl");
-    const char* frag_code = read_file("frag.glsl");
+    const char* vert_code = read_shader("vert.glsl");
+    const char* frag_code = read_shader("frag.glsl");
 
     GLuint vert_shader, frag_shader;
 
@@ -360,6 +401,8 @@ void mainloop()
 int main(int argc, char **argv)
 {
     init();
+
+    read_mesh(&m, "assets/model.bin");
 
     mainloop();
 
