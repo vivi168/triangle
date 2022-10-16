@@ -287,22 +287,177 @@ class MD5Model:
         with open('model.bin', 'wb') as f:
             f.write(headerData + vertData + faceData)
 
+class JointInfo:
+    def __init__(self, name='', parent=0, flags=0, startIndex=0):
+        self.name = name
+        self.parent = parent
+        self.flags = flags
+        self.startIndex = startIndex
+
+    def __str__(self):
+        return "{} {} {} {}".format(self.name, self.parent, self.flags, self.startIndex)
+
+class BaseFrameJoint:
+    def __init__(self, pos=None, orient=None):
+        self.pos = pos # Vec3
+        self.orient = orient # Quaternion
+
+    def __str__(self):
+        return "({}) ({})".format(self.pos, self.orient)
+
 class MD5Anim:
     def __init__(self):
-        pass
+        self.numFrames = 0
+        self.numJoints = 0
+        self.frameRate = 0
+        self.numAnimatedComponents = 0
+
+        self.skelFrames = []
+        self.bbox = []
+
+        self.jointInfos = [] # JointInfo
+        self.baseFrame = [] # BaseFrameJoint
 
     def from_file(self, filename):
         with open(filename) as rawfile:
-            pass
+            while True:
+                line = rawfile.readline()
+                if not line:
+                    break
+
+                if line.startswith('MD5Version'):
+                    version = parse.search('MD5Version {:d}', line)[0]
+                    if version != 10:
+                        raise Exception('wrong md5 version')
+
+                elif line.startswith('commandline'):
+                    pass
+
+                elif line.startswith('numFrames'):
+                    self.numFrames = parse.search('numFrames {:d}', line)[0]
+                    self.skelFrames = [None] * self.numFrames
+                    self.bbox = [None] * self.numFrames
+
+                elif line.startswith('numJoints'):
+                    self.numJoints = parse.search('numJoints {:d}', line)[0]
+                    for i in range(self.numFrames):
+                        self.skelFrames[i] = [None] * self.numJoints
+
+                    self.jointInfos = [None] * self.numJoints
+                    self.baseFrame = [None] * self.numJoints
+
+                elif line.startswith('frameRate'):
+                    self.frameRate = parse.search('frameRate {:d}', line)[0]
+
+                elif line.startswith('numAnimatedComponents'):
+                    self.numAnimatedComponents = parse.search('numAnimatedComponents {:d}', line)[0]
+                    
+
+                # hierarchy
+                elif line.startswith('hierarchy {'):
+                    for i in range(self.numJoints):
+                        jointInfosLine = rawfile.readline().lstrip().replace('\t', ' ')
+                        data = parse.search('"{name}" {parent:d} {flags:d} {startIndex:d}', jointInfosLine)
+                        self.jointInfos[i] = JointInfo(data['name'], data['parent'], data['flags'], data['startIndex'])
+                # bounds
+                elif line.startswith('bounds {'):
+                    pass
+
+                # baseframe
+                elif line.startswith('baseframe {'):
+                    for i in range(self.numJoints):
+                        baseFrameLine = rawfile.readline().lstrip().replace('\t', ' ')
+                        data = parse.search('( {px:g} {py:g} {pz:g} ) ( {ox:g} {oy:g} {oz:g} )', baseFrameLine)
+                        pos = Vec3(data['px'], data['py'], data['pz'])
+                        orient = Quaternion(data['ox'], data['oy'], data['oz'])
+                        self.baseFrame[i] = BaseFrameJoint(pos, orient)
+                # frames
+                elif line.startswith('frame'):
+                    frameId = parse.search('frame {id:d}', line)['id']
+                    frameLines = []
+                    while True:
+                        frameLine = rawfile.readline().lstrip()
+                        if frameLine == "}\n":
+                            break
+                        frameLines.append(frameLine.rstrip())
+                    animFrameData = [float(x) for x in ' '.join(frameLines).split(' ')]
+                    if len(animFrameData) != self.numAnimatedComponents:
+                        raise Exception('wrong numAnimatedComponents for frame {}'.format(frameId))
+                    self.buildFrameSkeleton(frameId, animFrameData)
+
+        
+
+    def buildFrameSkeleton(self, frameId, animFrameData):
+        print('buildFrameSkeleton')
+        for i in range(self.numJoints):
+            baseJoint = self.baseFrame[i]
+            animatedPos = baseJoint.pos
+            animatedOrient = baseJoint.orient
+            j = 0
+
+            if self.jointInfos[i].flags & 1: # Tx
+                animatedPos.x = animFrameData[self.jointInfos[i].startIndex + j]
+                j += 1
+            if self.jointInfos[i].flags & 2: # Ty
+                animatedPos.y = animFrameData[self.jointInfos[i].startIndex + j]
+                j += 1
+            if self.jointInfos[i].flags & 4: # Tz
+                animatedPos.z = animFrameData[self.jointInfos[i].startIndex + j]
+                j += 1
+            if self.jointInfos[i].flags & 8:  # Qx
+                animatedOrient.x = animFrameData[self.jointInfos[i].startIndex + j]
+                j += 1
+            if self.jointInfos[i].flags & 16: # Qy
+                animatedOrient.y = animFrameData[self.jointInfos[i].startIndex + j]
+                j += 1
+            if self.jointInfos[i].flags & 32: # Qz
+                animatedOrient.z = animFrameData[self.jointInfos[i].startIndex + j]
+                j += 1
+
+            animatedOrient.computeW()
+            
+            parent = self.jointInfos[i].parent
+            thisJoint = Joint()
+            thisJoint.parent = parent
+            thisJoint.name = self.jointInfos[i].name
+
+            if thisJoint.parent < 0:
+                thisJoint.pos = animatedPos
+                thisJoint.orient = animatedOrient
+            else:
+                parentJoint = self.skelFrames[frameId][parent]
+                rpos = parentJoint.orient.rotatePoint(animatedPos)
+                thisJoint.pos = Vec3()
+                thisJoint.pos.x = rpos.x + parentJoint.pos.x
+                thisJoint.pos.y = rpos.y + parentJoint.pos.y
+                thisJoint.pos.z = rpos.z + parentJoint.pos.z
+
+                thisJoint.orient = parentJoint.orient.multQuat(animatedOrient)
+                thisJoint.orient.normalize()
+
+            self.skelFrames[frameId][i] = thisJoint
 
     def export(self):
-        pass
+        print('export')
+        print(self.numFrames)
+        print(self.numJoints)
+        print(self.frameRate)
+        for j in self.baseFrame:
+            print(j)
+        print()
+        for f in self.skelFrames:
+            for s in f:
+                print(s)
+            print()
+
+
 
 if __name__ == '__main__':
     model = MD5Model()
     model.from_file('cubeguy.md5mesh')
     model.export()
 
+    print('animation')
     anim = MD5Anim()
     anim.from_file('running.md5anim')
     anim.export()
