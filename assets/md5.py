@@ -22,6 +22,7 @@ class Vec3:
         m[1][3] = self.y
         m[2][3] = self.z
 
+
         return m
 
     def __str__(self):
@@ -130,12 +131,23 @@ class Joint:
         self.pos = pos # Vec3
         self.orient = orient # Quaternion
 
-    def invBindMat4x4(self):
+    def invBindMat4x4(self, joints):
         trans = self.pos.trans4x4()
         rot = self.orient.rot4x4()
-        bone = trans.dot(rot)
+        t = trans.dot(rot)
 
-        return np.linalg.inv(bone)
+        parent = self.parent
+
+        while parent >= 0:
+            trans = joints[parent].pos.trans4x4()
+            rot = joints[parent].orient.rot4x4()
+            pt = trans.dot(rot)
+            t = pt.dot(t)
+
+            parent = joints[parent].parent
+
+        #return np.linalg.inv(np.identity(4))
+        return np.linalg.inv(t)
 
     def __str__(self):
         return '"{}": parent: {:d} pos: ({}, {}, {}) orient: ({}, {}, {}, {})'.format(
@@ -210,6 +222,152 @@ class SkinnedVertex:
             boneWeightsData += struct.pack('<f', f)
         return self.pack() + boneIndicesData + boneWeightsData
 
+class M3DModel:
+    def __init__(self):
+        self.verts = []
+        self.curVertStart = 0
+        self.faces = []
+        self.curFaceStart = 0
+        self.boneOffsets = []
+        self.boneHierarchy = []
+
+        self.animationClips = []
+
+        self.subsets = []
+        self.materials = []
+
+    def printHeader(self):
+        print('***************m3d-File-Header***************')
+        print('#Materials {}'.format(len(self.subsets)))
+        print('#Vertices {}'.format(len(self.verts)))
+        print('#Triangles {}'.format(len(self.faces)))
+        print('#Bones {}'.format(len(self.boneOffsets)))
+        print('#AnimationClips {}'.format(len(self.animationClips)))
+        print()
+
+    def printMaterials(self):
+        print('***************Materials*********************')
+        for m in self.materials:
+            print('Name: {}'.format('TODO'))
+            print('Diffuse: 1 1 1')
+            print('Fresnel0: 0.05 0.05 0.05')
+            print('Roughness: 0.5')
+            print('AlphaClip: 0')
+            print('MaterialTypeName: Skinned')
+            print('DiffuseMap: {}'.format('bricks2.dds'))
+            print('NormalMap: {}'.format('bricks2_nmap.dds'))
+            print()
+
+    def printSubsetsTable(self):
+        print('***************SubsetTable*******************')
+        sid = 0
+        for s in self.subsets:
+            print('SubsetID: {} VertexStart: {} VertexCount: {} FaceStart: {} FaceCount: {}'.format(
+                sid,
+                s['VertexStart'], s['VertexCount'],
+                s['FaceStart'], s['FaceCount'],
+                ))
+            sid += 1
+            print()
+
+    def printVertices(self):
+        print('***************Vertices**********************')
+        for v in self.verts:
+            print('Position: {:f} {:f} {:f}'.format(v.pos.x * 50, v.pos.y * 50, v.pos.z * 50))
+            print('Tangent: {:f} {:f} {:f} {:f}'.format(0, 0, 0, 0))
+            print('Normal: {:f} {:f} {:f}'.format(0, 0, 0))
+            print('Tex-Coords: {:f} {:f}'.format(v.uv.x, v.uv.y))
+            w = v.boneWeights + [0] * (4 - len(v.boneWeights))
+            i = v.boneIndices + [0] * (4 - len(v.boneIndices))
+            print('BlendWeights: {} {} {} {}'.format(w[0], w[1], w[2], w[3]))
+            print('BlendIndices: {} {} {} {}'.format(i[0], i[1], i[2], i[3]))
+            print()
+
+    def printTriangles(self):
+        print('***************Triangles*********************')
+        for f in self.faces:
+            print('{} {} {}'.format(f.vertIndices[0], f.vertIndices[1], f.vertIndices[2]))
+        print()
+
+    def printBoneOffsets(self):
+        print('***************BoneOffsets*******************')
+        bid = 0
+        for b in self.boneOffsets:
+            flat = b.ravel()
+            print('BoneOffset{} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f}'.format(bid,
+                 flat[0],  flat[1],  flat[2],  flat[3],
+                 flat[4],  flat[5],  flat[6],  flat[7],
+                 flat[8],  flat[9], flat[10], flat[11],
+                flat[12], flat[13], flat[14], flat[15]))
+            bid += 1
+        print()
+
+    def printBoneHierarchy(self):
+        print('***************BoneHierarchy*****************')
+        bid = 0
+        for b in self.boneHierarchy:
+            print('ParentIndexOfBone{}: {}'.format(bid, b.parent))
+            bid += 1
+        print()
+
+    def printAnimationClips(self):
+        print('***************AnimationClips****************')
+        for a in self.animationClips:
+            print('AnimationClip {}'.format(a['name']))
+            print('{')
+            td = 1 / a['frameRate']
+            bid = 0
+            for b in a['bones']:
+                print('    Bone{} #Keyframes: {}'.format(bid, len(b)))
+                print('    {')
+                bid += 1
+                t = 0
+                for kf in b:
+                    print('        Time: {:f} Pos: {:f} {:f} {:f} Scale: 1 1 1 Quat: {:f} {:f} {:f} {:f}'.format(
+                        t,
+                        kf['pos'].x, kf['pos'].y, kf['pos'].z,
+                        kf['orient'].x, kf['orient'].y, kf['orient'].z, kf['orient'].w
+                        ))
+                    t += td
+                print('    }')
+            print('}')
+            print()
+
+    def printFile(self):
+        self.printHeader()
+        self.printMaterials()
+        self.printSubsetsTable()
+        self.printVertices()
+        self.printTriangles()
+        self.printBoneOffsets()
+        self.printBoneHierarchy()
+        self.printAnimationClips()
+        return
+
+    def addAnimationClip(self, name, skelFrames, numBones, frameRate):
+        bones = [[]] * numBones
+        for i in range(numBones):
+            bones[i] = [None] * len(skelFrames)
+        i = 0
+        for f in skelFrames:
+            bid = 0
+            for s in f:
+                b = {
+                     #'pos': Vec3(),
+                     #'orient': Quaternion()
+                     'pos': s.pos,
+                     'orient': s.orient
+                     }
+                bones[bid][i] = b
+                bid += 1
+
+            i+=1
+        self.animationClips.append({
+            'name': name,
+            'frameRate': frameRate,
+            'bones': bones
+            })
+
 
 class MD5Model:
     def __init__(self):
@@ -255,7 +413,7 @@ class MD5Model:
 
                         if meshLine.startswith('shader'):
                             # TODO save shader information (use it as texture filename)
-                            pass
+                            self.shader = 'TODO'
 
                         # vertices
                         elif meshLine.startswith('numverts'):
@@ -291,13 +449,27 @@ class MD5Model:
                                 pos)
         return self
 
-    def export(self):
+    def export(self, m3d):
         for m in self.meshes:
-            self.prepareMesh(m)
+            verts, tris = self.prepareMesh(m)
+            m3d.verts += verts
+            m3d.faces += tris
+            m3d.subsets.append({
+                'VertexStart': m3d.curVertStart,
+                'VertexCount': len(verts),
+                'FaceStart': m3d.curFaceStart,
+                'FaceCount': len(tris)
+                })
+            m3d.curVertStart += len(verts)
+            m3d.curFaceStart += len(tris)
+
+            m3d.materials.append(m.shader) # TODO
 
         for j in self.joints:
-            print(j)
-            print(j.invBindMat4x4())
+           # print(j.invBindMat4x4())
+           m3d.boneOffsets.append(j.invBindMat4x4(self.joints).T)
+
+        return m3d
 
     def prepareMesh(self, m):
         o_vertices = []
@@ -324,19 +496,21 @@ class MD5Model:
 
             o_vertices.append(SkinnedVertex(finalPos, v.st, boneIndices, boneWeights))
 
-        
+        """
         vertData = bytearray()
         faceData = bytearray()
         for v in o_vertices:
             vertData += v.pack()
         for t in m.tris:
             faceData += t.pack()
-        
-        print(m.numVerts, m.numTris * 3)
+
+        # print(m.numVerts, m.numTris * 3)
         headerData = struct.pack('<ii', m.numVerts, m.numTris * 3)
         # TODO: write one file for each mesh in the model
         with open('model.bin', 'wb') as f:
             f.write(headerData + vertData + faceData)
+        """
+        return o_vertices, m.tris
 
 class JointInfo:
     def __init__(self, name='', parent=0, flags=0, startIndex=0):
@@ -352,6 +526,14 @@ class BaseFrameJoint:
     def __init__(self, pos=None, orient=None):
         self.pos = pos # Vec3
         self.orient = orient # Quaternion
+
+    def invBindMat4x4(self):
+        trans = self.pos.trans4x4()
+        rot = self.orient.rot4x4()
+        bone = trans.dot(rot)
+        # bone = np.identity(4)
+
+        return np.linalg.inv(bone)
 
     def __str__(self):
         return "({}) ({})".format(self.pos, self.orient)
@@ -371,6 +553,8 @@ class MD5Anim:
 
     def from_file(self, filename):
         with open(filename) as rawfile:
+            self.animationName = 'Take1' # filename.rsplit('.', 1)[0]
+
             while True:
                 line = rawfile.readline()
                 if not line:
@@ -402,7 +586,7 @@ class MD5Anim:
 
                 elif line.startswith('numAnimatedComponents'):
                     self.numAnimatedComponents = parse.search('numAnimatedComponents {:d}', line)[0]
-                    
+
 
                 # hierarchy
                 elif line.startswith('hierarchy {'):
@@ -436,7 +620,7 @@ class MD5Anim:
                         raise Exception('wrong numAnimatedComponents for frame {}'.format(frameId))
                     self.buildFrameSkeleton(frameId, animFrameData)
 
-        
+
 
     def buildFrameSkeleton(self, frameId, animFrameData):
         for i in range(self.numJoints):
@@ -465,7 +649,7 @@ class MD5Anim:
                 j += 1
 
             animatedOrient.computeW()
-            
+
             parent = self.jointInfos[i].parent
             thisJoint = Joint()
             thisJoint.parent = parent
@@ -487,30 +671,42 @@ class MD5Anim:
 
             self.skelFrames[frameId][i] = thisJoint
 
-    def export(self):
-        print('export')
-        print(self.numFrames)
-        print(self.numJoints)
-        print(self.frameRate)
+    def export(self, m3d):
+        # print('export')
+        # print(self.numFrames)
+        # print(self.numJoints)
+        # print(self.frameRate)
         for j in self.baseFrame:
-            print(j)
-        print()
+            pass # print(j)
+        # print()
         i = 0
         for f in self.skelFrames:
-            print('frame {}'.format(i))
+            # print('frame {}'.format(i))
             for s in f:
-                print(s)
-            print()
+                pass # print(s)
+            # print()
             i+=1
+        m3d.addAnimationClip(self.animationName, self.skelFrames, self.numJoints, self.frameRate)
+        m3d.boneHierarchy = self.jointInfos
+
+        # for j in self.baseFrame:
+        #     # print(j.invBindMat4x4())
+        #     m3d.boneOffsets.append(j.invBindMat4x4())
+
+        return m3d
 
 
 
 if __name__ == '__main__':
+    out = M3DModel()
+
     model = MD5Model()
     model.from_file('cubeguy.md5mesh')
-    model.export()
+    out = model.export(out)
 
-    print('animation')
+    # print('animation')
     anim = MD5Anim()
     anim.from_file('running.md5anim')
-    anim.export()
+    out = anim.export(out)
+
+    out.printFile()
