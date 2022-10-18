@@ -80,7 +80,15 @@ InputManager &input_mgr = InputManager::instance();
 void read_mesh(Mesh* m, char const* filename)
 {
     FILE* fp;
+#ifdef _WIN32
     fopen_s(&fp, filename, "rb");
+#else
+    fp = fopen(filename, "rb");
+#endif
+
+    if (!fp)
+        exit(EXIT_FAILURE);
+
     fread(&m->header, sizeof(MeshHeader), 1, fp);
 
     printf("%d, %d\n", m->header.numVerts, m->header.numIndices / 3);
@@ -160,11 +168,15 @@ const char* read_shader(char const* filename)
     size_t len;
     FILE* f;
 
+#ifdef _WIN32
     fopen_s(&f, filename, "rb");
+#else
+    f = fopen(filename, "rb");
+#endif
 
     if (!f) {
         // TODO: error handling
-        return NULL;
+        exit(EXIT_FAILURE);
     }
 
     fseek(f, 0, SEEK_END);
@@ -174,7 +186,7 @@ const char* read_shader(char const* filename)
 
     if (!buffer) {
         // TODO: error handling
-        return NULL;
+        exit(EXIT_FAILURE);
     }
 
     fread(buffer, 1, len, f);
