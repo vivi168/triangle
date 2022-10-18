@@ -16,6 +16,14 @@ class Vec3:
         self.y = y
         self.z = z
 
+    def trans4x4(self):
+        m = np.identity(4)
+        m[0][3] = self.x
+        m[1][3] = self.y
+        m[2][3] = self.z
+
+        return m
+
     def __str__(self):
         return '{:.6f} {:.6f} {:.6f}'.format(self.x, self.y, self.z)
 
@@ -36,6 +44,33 @@ class Quaternion:
             self.w = 0.0
         else:
             self.w = -np.sqrt(t)
+
+    def rot4x4(self):
+        q0 = self.w
+        q1 = self.x
+        q2 = self.y
+        q3 = self.z
+        # First row of the rotation matrix
+        r00 = 2 * (q0 * q0 + q1 * q1) - 1
+        r01 = 2 * (q1 * q2 - q0 * q3)
+        r02 = 2 * (q1 * q3 + q0 * q2)
+
+        # Second row of the rotation matrix
+        r10 = 2 * (q1 * q2 + q0 * q3)
+        r11 = 2 * (q0 * q0 + q2 * q2) - 1
+        r12 = 2 * (q2 * q3 - q0 * q1)
+
+        # Third row of the rotation matrix
+        r20 = 2 * (q1 * q3 - q0 * q2)
+        r21 = 2 * (q2 * q3 + q0 * q1)
+        r22 = 2 * (q0 * q0 + q3 * q3) - 1
+
+        # 3x3 rotation matrix
+        m = np.array([[r00, r01, r02, 0],
+                      [r10, r11, r12, 0],
+                      [r20, r21, r22, 0],
+                      [  0,   0,   0, 1]])
+        return m
 
     def rotatePoint(self, pos):
         inv = Quaternion()
@@ -94,6 +129,13 @@ class Joint:
         self.parent = parent
         self.pos = pos # Vec3
         self.orient = orient # Quaternion
+
+    def invBindMat4x4(self):
+        trans = self.pos.trans4x4()
+        rot = self.orient.rot4x4()
+        bone = trans.dot(rot)
+
+        return np.linalg.inv(bone)
 
     def __str__(self):
         return '"{}": parent: {:d} pos: ({}, {}, {}) orient: ({}, {}, {}, {})'.format(
@@ -253,6 +295,10 @@ class MD5Model:
         for m in self.meshes:
             self.prepareMesh(m)
 
+        for j in self.joints:
+            print(j)
+            print(j.invBindMat4x4())
+
     def prepareMesh(self, m):
         o_vertices = []
 
@@ -260,6 +306,8 @@ class MD5Model:
             startWeight = v.startWeight
             countWeight = v.countWeight
             finalPos = Vec3()
+            boneIndices = [None] * countWeight
+            boneWeights = [None] * countWeight
 
             for i in range(countWeight):
                 w = m.weights[startWeight+i]
@@ -271,7 +319,10 @@ class MD5Model:
                 finalPos.y += (joint.pos.y + wv.y) * w.bias
                 finalPos.z += (joint.pos.z + wv.z) * w.bias
 
-            o_vertices.append(SkinnedVertex(finalPos, v.st))
+                boneIndices[i] = w.jointIndex
+                boneWeights[i] = w.bias
+
+            o_vertices.append(SkinnedVertex(finalPos, v.st, boneIndices, boneWeights))
 
         
         vertData = bytearray()
@@ -388,7 +439,6 @@ class MD5Anim:
         
 
     def buildFrameSkeleton(self, frameId, animFrameData):
-        print('buildFrameSkeleton')
         for i in range(self.numJoints):
             baseJoint = self.baseFrame[i]
             animatedPos = baseJoint.pos
@@ -445,10 +495,13 @@ class MD5Anim:
         for j in self.baseFrame:
             print(j)
         print()
+        i = 0
         for f in self.skelFrames:
+            print('frame {}'.format(i))
             for s in f:
                 print(s)
             print()
+            i+=1
 
 
 
