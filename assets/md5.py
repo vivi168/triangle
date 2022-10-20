@@ -209,7 +209,7 @@ class SkinnedVertex:
         self.boneWeights = bw
 
     def pack(self):
-        posData = struct.pack('<fff', self.pos.x, self.pos.z, self.pos.y)
+        posData = struct.pack('<fff', self.pos.x, self.pos.z, -self.pos.y)
         uvData = struct.pack('<ff', self.uv.x, self.uv.y)
         return posData + uvData
 
@@ -353,8 +353,6 @@ class M3DModel:
             bid = 0
             for s in f:
                 b = {
-                     #'pos': Vec3(),
-                     #'orient': Quaternion()
                      'pos': s.pos,
                      'orient': s.orient
                      }
@@ -496,7 +494,8 @@ class MD5Model:
 
             o_vertices.append(SkinnedVertex(finalPos, v.st, boneIndices, boneWeights))
 
-        """
+        ###
+
         vertData = bytearray()
         faceData = bytearray()
         for v in o_vertices:
@@ -509,7 +508,9 @@ class MD5Model:
         # TODO: write one file for each mesh in the model
         with open('model.bin', 'wb') as f:
             f.write(headerData + vertData + faceData)
-        """
+
+        ####
+
         return o_vertices, m.tris
 
 class JointInfo:

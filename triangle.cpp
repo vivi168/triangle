@@ -160,6 +160,8 @@ void create_window()
         SDL_Quit();
         exit(EXIT_FAILURE);
     }
+
+    SDL_SetRelativeMouseMode(SDL_TRUE);
 }
 
 const char* read_shader(char const* filename)
@@ -330,16 +332,42 @@ void render()
 
 void process_input()
 {
-    if (input_mgr.quit_requested() || input_mgr.is_pressed(KEY_QUIT)) {
+    camera.process_mouse(input_mgr.mouse_x(), input_mgr.mouse_y());
+
+    if (input_mgr.quit_requested() || input_mgr.is_pressed(SDLK_ESCAPE)) {
         quit = true;
     }
 
-    if (input_mgr.is_held(KEY_UP)) {
+    if (input_mgr.is_held(SDLK_w)) {
         camera.process_keyboard(CameraDirection::FORWARD, delta_time);
     }
 
-    if (input_mgr.is_held(KEY_DOWN)) {
+    if (input_mgr.is_held(SDLK_s)) {
         camera.process_keyboard(CameraDirection::BACKWARD, delta_time);
+    }
+
+    if (input_mgr.is_held(SDLK_a)) {
+        camera.process_keyboard(CameraDirection::LEFTWARD, delta_time);
+    }
+
+    if (input_mgr.is_held(SDLK_d)) {
+        camera.process_keyboard(CameraDirection::RIGHTWARD, delta_time);
+    }
+
+    if (input_mgr.is_held(SDLK_UP)) {
+        camera.process_keyboard(CameraDirection::UP, delta_time);
+    }
+
+    if (input_mgr.is_held(SDLK_DOWN)) {
+        camera.process_keyboard(CameraDirection::DOWN, delta_time);
+    }
+
+    if (input_mgr.is_held(SDLK_LEFT)) {
+        camera.process_keyboard(CameraDirection::LEFT, delta_time);
+    }
+
+    if (input_mgr.is_held(SDLK_RIGHT)) {
+        camera.process_keyboard(CameraDirection::RIGHT, delta_time);
     }
 }
 
