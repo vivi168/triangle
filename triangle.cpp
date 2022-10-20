@@ -248,18 +248,18 @@ typedef enum location_t {
     WEIGHT_IDS_LOC
 } Location;
 
-void init_mesh()
+void init_mesh(GlMesh* mesh)
 {
-    glGenVertexArrays(1, &mesh.vertex_array_obj);
-    glGenBuffers(1, &mesh.vertex_buffer_obj);
-    glGenBuffers(1, &mesh.element_buffer_obj);
+    glGenVertexArrays(1, &mesh->vertex_array_obj);
+    glGenBuffers(1, &mesh->vertex_buffer_obj);
+    glGenBuffers(1, &mesh->element_buffer_obj);
 
-    glBindVertexArray(mesh.vertex_array_obj);
+    glBindVertexArray(mesh->vertex_array_obj);
 
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vertex_buffer_obj);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
     glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m.header.numVerts, &m.verts[0], GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.element_buffer_obj);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * m.header.numIndices, &m.indices[0], GL_STATIC_DRAW);
 
     // vertex position (location 0)
@@ -268,6 +268,13 @@ void init_mesh()
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+}
+
+void destroy_mesh(GlMesh* mesh)
+{
+    glDeleteVertexArrays(1, &mesh->vertex_array_obj);
+    glDeleteBuffers(1, &mesh->vertex_buffer_obj);
+    glDeleteBuffers(1, &mesh->element_buffer_obj);
 }
 
 void init()
@@ -289,7 +296,7 @@ void init()
 
     load_shader();
 
-    init_mesh();
+    init_mesh(&mesh);
 
     // init model
     {
@@ -300,6 +307,8 @@ void init()
 
 void destroy()
 {
+    destroy_mesh(&mesh);
+
     SDL_GL_DeleteContext(context);
     SDL_DestroyWindow(sdl_window);
     SDL_Quit();
@@ -396,5 +405,6 @@ int main(int argc, char **argv)
 
     mainloop();
 
+    destroy();
     return 0;
 }
