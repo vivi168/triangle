@@ -146,7 +146,6 @@ class Joint:
 
             parent = joints[parent].parent
 
-        #return np.linalg.inv(np.identity(4))
         return np.linalg.inv(t)
 
     def __str__(self):
@@ -245,6 +244,8 @@ class M3DModel:
         print('#AnimationClips {}'.format(len(self.animationClips)))
         print()
 
+        return struct.pack('<ii', len(self.verts), len(self.faces) * 3)
+
     def printMaterials(self):
         print('***************Materials*********************')
         for m in self.materials:
@@ -272,6 +273,9 @@ class M3DModel:
 
     def printVertices(self):
         print('***************Vertices**********************')
+
+        vertData = bytearray()
+
         for v in self.verts:
             print('Position: {:f} {:f} {:f}'.format(v.pos.x * 50, v.pos.y * 50, v.pos.z * 50))
             print('Tangent: {:f} {:f} {:f} {:f}'.format(0, 0, 0, 0))
@@ -283,11 +287,22 @@ class M3DModel:
             print('BlendIndices: {} {} {} {}'.format(i[0], i[1], i[2], i[3]))
             print()
 
+            vertData += v.pack()
+
+        return vertData
+
     def printTriangles(self):
         print('***************Triangles*********************')
+
+        faceData = bytearray()
+
         for f in self.faces:
             print('{} {} {}'.format(f.vertIndices[0], f.vertIndices[1], f.vertIndices[2]))
+
+            faceData += f.pack()
+
         print()
+        return faceData
 
     def printBoneOffsets(self):
         print('***************BoneOffsets*******************')
@@ -334,15 +349,21 @@ class M3DModel:
             print()
 
     def printFile(self):
-        self.printHeader()
+        self.data = bytearray()
+        self.vertData = bytearray()
+        self.faceData = bytearray()
+
+        headerData = self.printHeader()
         self.printMaterials()
         self.printSubsetsTable()
-        self.printVertices()
-        self.printTriangles()
+        vertData = self.printVertices()
+        faceData = self.printTriangles()
         self.printBoneOffsets()
         self.printBoneHierarchy()
         self.printAnimationClips()
-        return
+        
+        with open('model.bin', 'wb') as f:
+            f.write(headerData + vertData + faceData)
 
     def addAnimationClip(self, name, skelFrames, numBones, frameRate):
         bones = [[]] * numBones
@@ -494,23 +515,6 @@ class MD5Model:
 
             o_vertices.append(SkinnedVertex(finalPos, v.st, boneIndices, boneWeights))
 
-        ###
-
-        vertData = bytearray()
-        faceData = bytearray()
-        for v in o_vertices:
-            vertData += v.pack()
-        for t in m.tris:
-            faceData += t.pack()
-
-        # print(m.numVerts, m.numTris * 3)
-        headerData = struct.pack('<ii', m.numVerts, m.numTris * 3)
-        # TODO: write one file for each mesh in the model
-        with open('model.bin', 'wb') as f:
-            f.write(headerData + vertData + faceData)
-
-        ####
-
         return o_vertices, m.tris
 
 class JointInfo:
@@ -527,14 +531,6 @@ class BaseFrameJoint:
     def __init__(self, pos=None, orient=None):
         self.pos = pos # Vec3
         self.orient = orient # Quaternion
-
-    def invBindMat4x4(self):
-        trans = self.pos.trans4x4()
-        rot = self.orient.rot4x4()
-        bone = trans.dot(rot)
-        # bone = np.identity(4)
-
-        return np.linalg.inv(bone)
 
     def __str__(self):
         return "({}) ({})".format(self.pos, self.orient)
@@ -689,10 +685,6 @@ class MD5Anim:
             i+=1
         m3d.addAnimationClip(self.animationName, self.skelFrames, self.numJoints, self.frameRate)
         m3d.boneHierarchy = self.jointInfos
-
-        # for j in self.baseFrame:
-        #     # print(j.invBindMat4x4())
-        #     m3d.boneOffsets.append(j.invBindMat4x4())
 
         return m3d
 
