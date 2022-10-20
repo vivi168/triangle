@@ -22,7 +22,6 @@ class Vec3:
         m[1][3] = self.y
         m[2][3] = self.z
 
-
         return m
 
     def __str__(self):
@@ -148,13 +147,17 @@ class Joint:
 
         return np.linalg.inv(t)
 
+    def pack(self):
+        # TODO:
+        pass
+
     def __str__(self):
         return '"{}": parent: {:d} pos: ({}, {}, {}) orient: ({}, {}, {}, {})'.format(
                 self.name, self.parent,
                 self.pos.x, self.pos.y, self.pos.z,
                 self.orient.x, self.orient.y, self.orient.z, self.orient.w)
 
-class Vertex:
+class MD5Vertex:
     def __init__(self, st=None, sw=0, cw=0):
         self.st = st # Vec2
         self.startWeight = sw
@@ -200,193 +203,89 @@ class Mesh:
         self.numWeights = 0
         self.weights = []
 
-class SkinnedVertex:
-    def __init__(self, pos=Vec3(), st=Vec2(), bi=[], bw=[]):
+class Vertex:
+    def __init__(self, pos=Vec3(), st=Vec2()):
         self.pos = pos
         self.uv = st
-        self.boneIndices = bi
-        self.boneWeights = bw
 
     def pack(self):
         posData = struct.pack('<fff', self.pos.x, self.pos.z, -self.pos.y)
         uvData = struct.pack('<ff', self.uv.x, self.uv.y)
         return posData + uvData
 
-    def packSkinned(self):
-        boneIndicesData = bytearray()
-        boneWeightsData = bytearray()
-        for i in self.boneIndices:
-            boneIndicesData += struct.pack('<i', i)
-        for f in self.boneWeights:
-            boneWeightsData += struct.pack('<f', f)
-        return self.pack() + boneIndicesData + boneWeightsData
+class SubSet:
+    def __init__(self, vertStart=0, vertCount=0, faceStart=0, faceCount=0):
+        self.vertStart = vertStart
+        self.vertCount = vertCount
+        self.faceStart = faceStart
+        self.faceCount = faceCount
+
+    def pack(self):
+       pass
 
 class M3DModel:
     def __init__(self):
-        self.verts = []
         self.curVertStart = 0
-        self.faces = []
         self.curFaceStart = 0
-        self.boneOffsets = []
-        self.boneHierarchy = []
 
-        self.animationClips = []
+        self.verts = []
+        self.faces = []
 
         self.subsets = []
-        self.materials = []
+        self.skelFrames = []
 
-    def printHeader(self):
-        print('***************m3d-File-Header***************')
-        print('#Materials {}'.format(len(self.subsets)))
-        print('#Vertices {}'.format(len(self.verts)))
-        print('#Triangles {}'.format(len(self.faces)))
-        print('#Bones {}'.format(len(self.boneOffsets)))
-        print('#AnimationClips {}'.format(len(self.animationClips)))
-        print()
-
+    def packMeshHeader(self):
+        # TODO handle models with multiple meshes
         return struct.pack('<ii', len(self.verts), len(self.faces) * 3)
 
-    def printMaterials(self):
-        print('***************Materials*********************')
-        for m in self.materials:
-            print('Name: {}'.format('TODO'))
-            print('Diffuse: 1 1 1')
-            print('Fresnel0: 0.05 0.05 0.05')
-            print('Roughness: 0.5')
-            print('AlphaClip: 0')
-            print('MaterialTypeName: Skinned')
-            print('DiffuseMap: {}'.format('bricks2.dds'))
-            print('NormalMap: {}'.format('bricks2_nmap.dds'))
-            print()
+    def packMaterials(self):
+        pass
 
-    def printSubsetsTable(self):
-        print('***************SubsetTable*******************')
-        sid = 0
-        for s in self.subsets:
-            print('SubsetID: {} VertexStart: {} VertexCount: {} FaceStart: {} FaceCount: {}'.format(
-                sid,
-                s['VertexStart'], s['VertexCount'],
-                s['FaceStart'], s['FaceCount'],
-                ))
-            sid += 1
-            print()
+    def packSubsetsTable(self):
+        pass
 
-    def printVertices(self):
-        print('***************Vertices**********************')
-
+    def packVertices(self):
         vertData = bytearray()
-
         for v in self.verts:
-            print('Position: {:f} {:f} {:f}'.format(v.pos.x * 50, v.pos.y * 50, v.pos.z * 50))
-            print('Tangent: {:f} {:f} {:f} {:f}'.format(0, 0, 0, 0))
-            print('Normal: {:f} {:f} {:f}'.format(0, 0, 0))
-            print('Tex-Coords: {:f} {:f}'.format(v.uv.x, v.uv.y))
-            w = v.boneWeights + [0] * (4 - len(v.boneWeights))
-            i = v.boneIndices + [0] * (4 - len(v.boneIndices))
-            print('BlendWeights: {} {} {} {}'.format(w[0], w[1], w[2], w[3]))
-            print('BlendIndices: {} {} {} {}'.format(i[0], i[1], i[2], i[3]))
-            print()
-
             vertData += v.pack()
 
         return vertData
 
-    def printTriangles(self):
-        print('***************Triangles*********************')
-
+    def packFaces(self):
         faceData = bytearray()
-
         for f in self.faces:
-            print('{} {} {}'.format(f.vertIndices[0], f.vertIndices[1], f.vertIndices[2]))
-
             faceData += f.pack()
 
-        print()
         return faceData
 
-    def printBoneOffsets(self):
-        print('***************BoneOffsets*******************')
-        bid = 0
-        for b in self.boneOffsets:
-            flat = b.ravel()
-            print('BoneOffset{} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f}'.format(bid,
-                 flat[0],  flat[1],  flat[2],  flat[3],
-                 flat[4],  flat[5],  flat[6],  flat[7],
-                 flat[8],  flat[9], flat[10], flat[11],
-                flat[12], flat[13], flat[14], flat[15]))
-            bid += 1
+    def packAnimHeader(self):
+        pass
+
+    def packSkelFrame(self, skelFrame):
+        for s in skelFrame:
+            print(s)
         print()
 
-    def printBoneHierarchy(self):
-        print('***************BoneHierarchy*****************')
-        bid = 0
-        for b in self.boneHierarchy:
-            print('ParentIndexOfBone{}: {}'.format(bid, b.parent))
-            bid += 1
-        print()
+        return bytearray()
 
-    def printAnimationClips(self):
-        print('***************AnimationClips****************')
-        for a in self.animationClips:
-            print('AnimationClip {}'.format(a['name']))
-            print('{')
-            td = 1 / a['frameRate']
-            bid = 0
-            for b in a['bones']:
-                print('    Bone{} #Keyframes: {}'.format(bid, len(b)))
-                print('    {')
-                bid += 1
-                t = 0
-                for kf in b:
-                    print('        Time: {:f} Pos: {:f} {:f} {:f} Scale: 1 1 1 Quat: {:f} {:f} {:f} {:f}'.format(
-                        t,
-                        kf['pos'].x, kf['pos'].y, kf['pos'].z,
-                        kf['orient'].x, kf['orient'].y, kf['orient'].z, kf['orient'].w
-                        ))
-                    t += td
-                print('    }')
-            print('}')
-            print()
-
-    def printFile(self):
-        self.data = bytearray()
-        self.vertData = bytearray()
-        self.faceData = bytearray()
-
-        headerData = self.printHeader()
-        self.printMaterials()
-        self.printSubsetsTable()
-        vertData = self.printVertices()
-        faceData = self.printTriangles()
-        self.printBoneOffsets()
-        self.printBoneHierarchy()
-        self.printAnimationClips()
+    def export(self):
+        meshHeaderData = self.packMeshHeader()
+        self.packMaterials()
+        self.packSubsetsTable()
+        vertData = self.packVertices()
+        faceData = self.packFaces()
         
+        # mesh data
         with open('model.bin', 'wb') as f:
-            f.write(headerData + vertData + faceData)
+            f.write(meshHeaderData + vertData + faceData)
 
-    def addAnimationClip(self, name, skelFrames, numBones, frameRate):
-        bones = [[]] * numBones
-        for i in range(numBones):
-            bones[i] = [None] * len(skelFrames)
+        # anim data
+        framesData = bytearray()
         i = 0
-        for f in skelFrames:
-            bid = 0
-            for s in f:
-                b = {
-                     'pos': s.pos,
-                     'orient': s.orient
-                     }
-                bones[bid][i] = b
-                bid += 1
-
+        for f in self.skelFrames:
+            print('frame {}'.format(i))
+            framesData += self.packSkelFrame(f)
             i+=1
-        self.animationClips.append({
-            'name': name,
-            'frameRate': frameRate,
-            'bones': bones
-            })
-
 
 class MD5Model:
     def __init__(self):
@@ -441,7 +340,7 @@ class MD5Model:
                         elif meshLine.startswith('vert'):
                             vertData = parse.search('vert {idx:d} ( {s:g} {t:g} ) {sw:d} {cw:d}', meshLine)
                             st = Vec2(vertData['s'], vertData['t'])
-                            mesh.vertices[vertData['idx']] = Vertex(
+                            mesh.vertices[vertData['idx']] = MD5Vertex(
                                 st,
                                 vertData['sw'],
                                 vertData['cw'])
@@ -473,32 +372,23 @@ class MD5Model:
             verts, tris = self.prepareMesh(m)
             m3d.verts += verts
             m3d.faces += tris
-            m3d.subsets.append({
-                'VertexStart': m3d.curVertStart,
-                'VertexCount': len(verts),
-                'FaceStart': m3d.curFaceStart,
-                'FaceCount': len(tris)
-                })
+            m3d.subsets.append(SubSet(
+                m3d.curVertStart, len(verts),
+                m3d.curFaceStart, len(tris),
+                # TODO: material
+                ))
             m3d.curVertStart += len(verts)
             m3d.curFaceStart += len(tris)
-
-            m3d.materials.append(m.shader) # TODO
-
-        for j in self.joints:
-           # print(j.invBindMat4x4())
-           m3d.boneOffsets.append(j.invBindMat4x4(self.joints).T)
 
         return m3d
 
     def prepareMesh(self, m):
-        o_vertices = []
+        verts = []
 
         for v in m.vertices:
             startWeight = v.startWeight
             countWeight = v.countWeight
             finalPos = Vec3()
-            boneIndices = [None] * countWeight
-            boneWeights = [None] * countWeight
 
             for i in range(countWeight):
                 w = m.weights[startWeight+i]
@@ -510,12 +400,9 @@ class MD5Model:
                 finalPos.y += (joint.pos.y + wv.y) * w.bias
                 finalPos.z += (joint.pos.z + wv.z) * w.bias
 
-                boneIndices[i] = w.jointIndex
-                boneWeights[i] = w.bias
+            verts.append(Vertex(finalPos, v.st))
 
-            o_vertices.append(SkinnedVertex(finalPos, v.st, boneIndices, boneWeights))
-
-        return o_vertices, m.tris
+        return verts, m.tris
 
 class JointInfo:
     def __init__(self, name='', parent=0, flags=0, startIndex=0):
@@ -668,23 +555,8 @@ class MD5Anim:
 
             self.skelFrames[frameId][i] = thisJoint
 
-    def export(self, m3d):
-        # print('export')
-        # print(self.numFrames)
-        # print(self.numJoints)
-        # print(self.frameRate)
-        for j in self.baseFrame:
-            pass # print(j)
-        # print()
-        i = 0
-        for f in self.skelFrames:
-            # print('frame {}'.format(i))
-            for s in f:
-                pass # print(s)
-            # print()
-            i+=1
-        m3d.addAnimationClip(self.animationName, self.skelFrames, self.numJoints, self.frameRate)
-        m3d.boneHierarchy = self.jointInfos
+    def export(self, m3d):        
+        m3d.skelFrames = self.skelFrames
 
         return m3d
 
@@ -702,4 +574,4 @@ if __name__ == '__main__':
     anim.from_file('running.md5anim')
     out = anim.export(out)
 
-    out.printFile()
+    out.export()
