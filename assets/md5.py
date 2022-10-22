@@ -7,6 +7,9 @@ class Vec2:
         self.x = x
         self.y = y
 
+    def pack(self):
+        return struct.pack('<ff', self.x, self.y)
+
     def __str__(self):
         return '{:.6f} {:.6f}'.format(self.x, self.y)
 
@@ -15,6 +18,9 @@ class Vec3:
         self.x = x
         self.y = y
         self.z = z
+
+    def pack(self):
+        return struct.pack('<fff', self.x, self.y, self.z)
 
     def trans4x4(self):
         m = np.identity(4)
@@ -34,6 +40,9 @@ class Quaternion:
         self.z = z
 
         self.computeW()
+
+    def pack(self):
+        return struct.pack('<ffff', self.x, self.y, self.z, self.w)
 
     def __str__(self):
         return '{:.6f} {:.6f} {:.6f} {:.6f}'.format(self.x, self.y, self.z, self.w)
@@ -123,12 +132,15 @@ class Quaternion:
     def slerp(self, qb, t):
         pass
 
-class Joint:
-    def __init__(self, name='', parent=0, pos=None, orient=None):
+class MD5Joint:
+    def __init__(self, name='', parent=0, pos=Vec3(), orient=Quaternion()):
         self.name = name
         self.parent = parent
         self.pos = pos # Vec3
         self.orient = orient # Quaternion
+
+    def pack(self):
+        return struct.pack('<i', self.parent) + self.pos.pack() + self.orient.pack()
 
     def invBindMat4x4(self, joints):
         trans = self.pos.trans4x4()
@@ -147,10 +159,6 @@ class Joint:
 
         return np.linalg.inv(t)
 
-    def pack(self):
-        # TODO:
-        pass
-
     def __str__(self):
         return '"{}": parent: {:d} pos: ({}, {}, {}) orient: ({}, {}, {}, {})'.format(
                 self.name, self.parent,
@@ -158,44 +166,50 @@ class Joint:
                 self.orient.x, self.orient.y, self.orient.z, self.orient.w)
 
 class MD5Vertex:
-    def __init__(self, st=None, sw=0, cw=0):
+    def __init__(self, st=Vec2(), sw=0, cw=0):
         self.st = st # Vec2
         self.startWeight = sw
         self.countWeight = cw
+
+    def pack(self):
+        return self.st.pack() + struct.pack('<ii', self.startWeight, self.countWeight)
 
     def __str__(self):
         return 'ST: ({}, {}) weights: {} ({})'.format(
             self.st.x, self.st.y,
             self.startWeight, self.countWeight)
 
-class Triangle:
+class MD5Triangle:
     def __init__(self, vertIndices=[]):
         self.vertIndices = vertIndices
+
+    def pack(self):
+        return struct.pack('<iii', self.vertIndices[0], self.vertIndices[1], self.vertIndices[2])
 
     def __str__(self):
         return '{} {} {}'.format(
             self.vertIndices[0], self.vertIndices[1], self.vertIndices[2])
 
-    def pack(self):
-        return struct.pack('<iii', self.vertIndices[0], self.vertIndices[1], self.vertIndices[2])
-
-class Weight:
-    def __init__(self, jointIndex=0, bias=0, pos=None):
+class MD5Weight:
+    def __init__(self, jointIndex=0, bias=0, pos=Vec3()):
         self.jointIndex = jointIndex
         self.bias = bias
         self.pos = pos
+
+    def pack(self):
+        return struct.pack('<if', self.jointIndex, self.bias) + self.pos.pack()
 
     def __str__(self):
         return '{} {} ({}, {}, {})'.format(
             self.jointIndex, self.bias,
             self.pos.x, self.pos.y, self.pos.z)
 
-class Mesh:
+class MD5Mesh:
     def __init__(self):
         self.shader = ""
 
         self.numVerts = 0
-        self.vertices = []
+        self.verts = []
 
         self.numTris = 0
         self.tris = []
@@ -203,7 +217,23 @@ class Mesh:
         self.numWeights = 0
         self.weights = []
 
-class Vertex:
+    def pack(self):
+        headerData = struct.pack('<iii', self.numVerts, self.numTris, self.numWeights)
+
+        vertsData = bytearray()
+        trisData = bytearray()
+        weightsData =bytearray()
+
+        for v in self.verts:
+            vertsData += v.pack()
+        for t in self.tris:
+            trisData += t.pack()
+        for w in self.weights:
+            weightsData += w.pack()
+
+        return headerData + vertsData + trisData + weightsData
+
+class M3DVertex:
     def __init__(self, pos=Vec3(), st=Vec2()):
         self.pos = pos
         self.uv = st
@@ -213,7 +243,7 @@ class Vertex:
         uvData = struct.pack('<ff', self.uv.x, self.uv.y)
         return posData + uvData
 
-class SubSet:
+class M3DSubSet:
     def __init__(self, vertStart=0, vertCount=0, faceStart=0, faceCount=0):
         self.vertStart = vertStart
         self.vertCount = vertCount
@@ -274,7 +304,7 @@ class M3DModel:
         self.packSubsetsTable()
         vertData = self.packVertices()
         faceData = self.packFaces()
-        
+
         # mesh data
         with open('model.bin', 'wb') as f:
             f.write(meshHeaderData + vertData + faceData)
@@ -289,8 +319,8 @@ class M3DModel:
 
 class MD5Model:
     def __init__(self):
-        self.numJoints = 0
-        self.numMeshes = 0
+        self.numJoints = 0 # TODO raise if numJoints != len(joints)
+        self.numMeshes = 0 # TODO raise if numMesh != len(meshes)
         self.joints = []
         self.meshes = []
         # TODO: bounding boxes ?
@@ -318,11 +348,11 @@ class MD5Model:
                         jointData = parse.search('"{name}" {parent:d} ( {px:g} {py:g} {pz:g} ) ( {ox:g} {oy:g} {oz:g} )', jointLine)
                         pos = Vec3(jointData['px'], jointData['py'], jointData['pz'])
                         orient = Quaternion(jointData['ox'], jointData['oy'], jointData['oz'])
-                        joint = Joint(jointData['name'], jointData['parent'], pos, orient)
+                        joint = MD5Joint(jointData['name'], jointData['parent'], pos, orient)
                         self.joints.append(joint)
 
                 elif line.startswith('mesh {'):
-                    mesh = Mesh()
+                    mesh = MD5Mesh()
                     while True:
                         meshLine = rawfile.readline().lstrip()
                         if meshLine == "}\n":
@@ -336,11 +366,11 @@ class MD5Model:
                         # vertices
                         elif meshLine.startswith('numverts'):
                             mesh.numVerts = parse.search('numverts {:d}', meshLine)[0]
-                            mesh.vertices = [None] * mesh.numVerts
+                            mesh.verts = [None] * mesh.numVerts
                         elif meshLine.startswith('vert'):
                             vertData = parse.search('vert {idx:d} ( {s:g} {t:g} ) {sw:d} {cw:d}', meshLine)
                             st = Vec2(vertData['s'], vertData['t'])
-                            mesh.vertices[vertData['idx']] = MD5Vertex(
+                            mesh.verts[vertData['idx']] = MD5Vertex(
                                 st,
                                 vertData['sw'],
                                 vertData['cw'])
@@ -351,7 +381,7 @@ class MD5Model:
                             mesh.tris = [None] * mesh.numTris
                         elif meshLine.startswith('tri'):
                             triData = parse.search('tri {idx:d} {:d} {:d} {:d}', meshLine)
-                            mesh.tris[triData['idx']] = Triangle(
+                            mesh.tris[triData['idx']] = MD5Triangle(
                                 [triData[0], triData[1], triData[2]])
 
                         # weights
@@ -361,18 +391,33 @@ class MD5Model:
                         elif meshLine.startswith('weight'):
                             weightData = parse.search('weight {idx:d} {joint:d} {bias:g} ( {px:g} {py:g} {pz:g} )', meshLine)
                             pos = Vec3(weightData['px'], weightData['py'], weightData['pz'])
-                            mesh.weights[weightData['idx']] = Weight(
+                            mesh.weights[weightData['idx']] = MD5Weight(
                                 weightData['joint'],
                                 weightData['bias'],
                                 pos)
         return self
 
-    def export(self, m3d):
+    def export(self):
+        headerData = struct.pack('<ii', self.numJoints, self.numMeshes)
+
+        jointsData = bytearray()
+        for j in self.joints:
+            jointsData += j.pack()
+
+        meshesData = bytearray()
+        for m in self.meshes:
+            meshesData += m.pack()
+
+        with open('md5model.bin', 'wb') as f:
+            f.write(headerData + jointsData + meshesData)
+
+
+    def toM3D(self, m3d):
         for m in self.meshes:
             verts, tris = self.prepareMesh(m)
             m3d.verts += verts
             m3d.faces += tris
-            m3d.subsets.append(SubSet(
+            m3d.subsets.append(M3DSubSet(
                 m3d.curVertStart, len(verts),
                 m3d.curFaceStart, len(tris),
                 # TODO: material
@@ -385,7 +430,7 @@ class MD5Model:
     def prepareMesh(self, m):
         verts = []
 
-        for v in m.vertices:
+        for v in m.verts:
             startWeight = v.startWeight
             countWeight = v.countWeight
             finalPos = Vec3()
@@ -400,7 +445,7 @@ class MD5Model:
                 finalPos.y += (joint.pos.y + wv.y) * w.bias
                 finalPos.z += (joint.pos.z + wv.z) * w.bias
 
-            verts.append(Vertex(finalPos, v.st))
+            verts.append(M3DVertex(finalPos, v.st))
 
         return verts, m.tris
 
@@ -535,7 +580,7 @@ class MD5Anim:
             animatedOrient.computeW()
 
             parent = self.jointInfos[i].parent
-            thisJoint = Joint()
+            thisJoint = MD5Joint()
             thisJoint.parent = parent
             thisJoint.name = self.jointInfos[i].name
 
@@ -555,7 +600,7 @@ class MD5Anim:
 
             self.skelFrames[frameId][i] = thisJoint
 
-    def export(self, m3d):        
+    def export(self, m3d):
         m3d.skelFrames = self.skelFrames
 
         return m3d
@@ -567,7 +612,8 @@ if __name__ == '__main__':
 
     model = MD5Model()
     model.from_file('cubeguy.md5mesh')
-    out = model.export(out)
+    model.export()
+    out = model.toM3D(out)
 
     # print('animation')
     anim = MD5Anim()

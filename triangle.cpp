@@ -17,6 +17,7 @@
 
 #include "input_manager.h"
 #include "camera.h"
+#include "md5.h"
 
 #define FPS 60
 #define TICKS_PER_FRAME (1000 / FPS)
@@ -38,15 +39,6 @@ typedef struct vertex_t {
     glm::vec3 position;
     glm::vec2 uv;
 } Vertex;
-
-#define MAX_BONE 4
-typedef struct skinned_vertex_t {
-    glm::vec3 position;
-    glm::vec2 uv;
-
-    int bone_ids[MAX_BONE];
-    int weights[MAX_BONE];
-} SkinnedVertex;
 
 struct MeshHeader {
     int numVerts;
@@ -77,7 +69,7 @@ float delta_time;
 bool quit = false;
 InputManager &input_mgr = InputManager::instance();
 
-void read_mesh(Mesh* m, char const* filename)
+void read_mesh(Mesh* m, char const* filename) // TODO: useless function, compute from MD5Model
 {
     FILE* fp;
 #ifdef _WIN32
@@ -100,7 +92,7 @@ void read_mesh(Mesh* m, char const* filename)
     fread(m->indices, sizeof(int), m->header.numIndices, fp);
 
     for (int i = 0; i < m->header.numVerts; i++)
-        printf("pos: (%f %f %f) uv: [%f %f]\n", 
+        printf("pos: (%f %f %f) uv: [%f %f]\n",
             m->verts[i].position.x, m->verts[i].position.y, m->verts[i].position.z,
             m->verts[i].uv.x, m->verts[i].uv.y);
 
@@ -400,11 +392,16 @@ void mainloop()
 
 int main(int argc, char **argv)
 {
-    read_mesh(&m, "assets/model.bin");
-    init();
+    MD5Model md5m;
+    read_md5model("assets/md5model.bin", &md5m);
 
-    mainloop();
+    //read_mesh(&m, "assets/model.bin"); // TODO : read_md5model
+    //init();
 
-    destroy();
+    //mainloop();
+
+    //destroy();
+
+    // TODO: free model, mesh
     return 0;
 }
