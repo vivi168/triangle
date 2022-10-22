@@ -3,29 +3,6 @@
 #include <cmath>
 #include "md5.h"
 
-/*
-model.bin -> numJoint, numMeshes, joints[]
-		  -> numVerts, numTris, numWeights, verts[], tris[], weights[]
-
-sizeof:
-vertex: 16
-triangle: 12
-weight: 20
-joint: 32
-
-
-
-read first 8 bytes (2 int)
-malloc numJoint * sizeof(Joint) (numJoint * 32 bytes)
-malloc numMeshes * sizeof(mesh)
-read numJoint * 32 bytes
-for i in range(numMeshes)
-	read 12 bytes (3 int)
-	MD5Mesh *mesh = &model->mesh[i]
-	malloc numVerts * sizeof(Vert), numTris * sizeof(Tri), numWeight * sizeof(Weight)
-	mesh->vertes = malloc(numVerts * sizeof(Vert))
-*/
-
 void read_md5model(const char* filename, MD5Model* model)
 {
 	FILE* fp;
@@ -40,7 +17,7 @@ void read_md5model(const char* filename, MD5Model* model)
 
 	fread(&model->header, sizeof(MD5ModelHeader), 1, fp);
 
-	printf("MD5 model\n%d, %d\n", model->header.numJoints, model->header.numMeshes);
+	//printf("MD5 model\n%d, %d\n", model->header.numJoints, model->header.numMeshes);
 
 	model->joints = (MD5Joint*)malloc(sizeof(MD5Joint) * model->header.numJoints);
 
@@ -49,11 +26,11 @@ void read_md5model(const char* filename, MD5Model* model)
 	for (int i = 0; i < model->header.numJoints; i++) {
 		MD5Joint* j = &model->joints[i];
 
-		printf("parent: %d (%f %f %f) (%f %f %f %f)\n",
-			j->parent,
-			j->pos[X], j->pos[Y], j->pos[Z],
-			j->orient[X], j->orient[Y], j->orient[Z], j->orient[W]
-		);
+		//printf("parent: %d (%f %f %f) (%f %f %f %f)\n",
+		//	j->parent,
+		//	j->pos[X], j->pos[Y], j->pos[Z],
+		//	j->orient[X], j->orient[Y], j->orient[Z], j->orient[W]
+		//);
 	}
 
 	// READ MESH
@@ -68,36 +45,36 @@ void read_md5model(const char* filename, MD5Model* model)
 		mesh->vertices = (MD5Vertex*)malloc(sizeof(MD5Vertex) * mesh->header.numVerts);
 		fread(mesh->vertices, sizeof(MD5Vertex), mesh->header.numVerts, fp);
 
-		for (int v = 0; v < mesh->header.numVerts; v++) {
-			printf("(%f %f) %d %d\n",
-				mesh->vertices[v].st[X], mesh->vertices[v].st[Y],
-				mesh->vertices[v].startWeight, mesh->vertices[v].countWeight
-				);
-		}
+		//for (int v = 0; v < mesh->header.numVerts; v++) {
+		//	printf("(%f %f) %d %d\n",
+		//		mesh->vertices[v].st[X], mesh->vertices[v].st[Y],
+		//		mesh->vertices[v].startWeight, mesh->vertices[v].countWeight
+		//		);
+		//}
 
 		// Tris
 		mesh->tris = (MD5Triangle*)malloc(sizeof(MD5Triangle) * mesh->header.numTris);
 		fread(mesh->tris, sizeof(MD5Triangle), mesh->header.numTris, fp);
 
-		for (int t = 0; t < mesh->header.numTris; t++) {
-			printf("%d %d %d\n",
-				mesh->tris[t].vertIndices[0],
-				mesh->tris[t].vertIndices[1],
-				mesh->tris[t].vertIndices[2]
-			);
-		}
+		//for (int t = 0; t < mesh->header.numTris; t++) {
+		//	printf("%d %d %d\n",
+		//		mesh->tris[t].vertIndices[0],
+		//		mesh->tris[t].vertIndices[1],
+		//		mesh->tris[t].vertIndices[2]
+		//	);
+		//}
 
 		// Weights
 		mesh->weights = (MD5Weight*)malloc(sizeof(MD5Weight) * mesh->header.numWeights);
 		fread(mesh->weights, sizeof(MD5Weight), mesh->header.numWeights, fp);
 
-		for (int w = 0; w < mesh->header.numWeights; w++) {
-			printf("%d %f (%f %f %f)\n",
-				mesh->weights[w].jointIndex,
-				mesh->weights[w].bias,
-				mesh->weights[w].pos[X], mesh->weights[w].pos[Y], mesh->weights[w].pos[Z]
-			);
-		}
+		//for (int w = 0; w < mesh->header.numWeights; w++) {
+		//	printf("%d %f (%f %f %f)\n",
+		//		mesh->weights[w].jointIndex,
+		//		mesh->weights[w].bias,
+		//		mesh->weights[w].pos[X], mesh->weights[w].pos[Y], mesh->weights[w].pos[Z]
+		//	);
+		//}
 	}
 }
 
@@ -149,9 +126,9 @@ void quat_rotate_point(const quat q, const vec3 in, vec3 out)
 	out[Z] = final[Z];
 }
 
-void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex* vertices)
+void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex** vertices)
 {
-	vertices = (Vertex*)malloc(sizeof(Vertex) * mesh->header.numVerts);
+	*vertices = (Vertex*)malloc(sizeof(Vertex) * mesh->header.numVerts);
 
 	for (int k = 0; k < mesh->header.numVerts; k++) {
 		MD5Vertex* v = &mesh->vertices[k];
@@ -169,14 +146,33 @@ void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex* vertices)
 			finalPos[Z] += (joint->pos[Z] + wv[Z]) * w->bias;
 		}
 
-		vertices[k].position.x = finalPos[X];
-		vertices[k].position.y = finalPos[Z];
-		vertices[k].position.z = -finalPos[Y];
-		vertices[k].uv.x = v->st[X];
-		vertices[k].uv.y = v->st[Y];
-
-		printf("*pos: (%f %f %f) uv: [%f %f]\n",
-			vertices[k].position.x, vertices[k].position.y, vertices[k].position.z,
-			vertices[k].uv.x, vertices[k].uv.y);
+		(*vertices)[k].position.x = finalPos[X];
+		(*vertices)[k].position.y = finalPos[Z];
+		(*vertices)[k].position.z = -finalPos[Y];
+		(*vertices)[k].uv.x = v->st[X];
+		(*vertices)[k].uv.y = v->st[Y];
 	}
+}
+
+// TODO: pass animation, to use correct joints
+void prepare_model(MD5Model* model, Vertex*** vertices, int* indices, int* nv, int* nt)
+{
+	int numVerts = 0;
+	int numTris = 0;
+	for (int i = 0; i < model->header.numMeshes; i++) {
+		numVerts += model->meshes[i].header.numVerts;
+		numTris += model->meshes[i].header.numTris;
+	}
+
+	*vertices = (Vertex**)malloc(sizeof(Vertex*) * numVerts);
+
+	for (int i = 0; i < model->header.numMeshes; i++) {
+		// TODO: subsets, increment triangle indices by subset start
+		//prepare_vertices(&model->meshes[i], model->joints, vertices[i]);
+		MD5Mesh* mesh = &model->meshes[i];
+		prepare_vertices(&model->meshes[i], model->joints, &(*vertices)[i]);
+	}
+
+	*nv = numVerts;
+	*nt = numTris;
 }

@@ -227,7 +227,7 @@ typedef enum location_t {
     WEIGHT_IDS_LOC
 } Location;
 
-void init_gl_mesh(GlMesh* mesh)
+void init_gl_mesh(GlMesh* mesh, MD5Model* model)
 {
     glGenVertexArrays(1, &mesh->vertex_array_obj);
     glGenBuffers(1, &mesh->vertex_buffer_obj);
@@ -235,11 +235,32 @@ void init_gl_mesh(GlMesh* mesh)
 
     glBindVertexArray(mesh->vertex_array_obj);
 
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m.header.numVerts, &m.verts[0], GL_STATIC_DRAW);
+    int numVerts = 0;
+    int numTris = 0;
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * m.header.numIndices, &m.indices[0], GL_STATIC_DRAW);
+    Vertex** verticesArr = NULL;
+    int* indices = NULL;
+    prepare_model(&md5m, &verticesArr, indices, &numVerts, &numTris);
+    printf("init gl mesh %d %d\n", numVerts, numTris);
+    
+
+    // vertices
+    {
+        // vertices = prepare_vertices
+        glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
+        glBufferData(GL_ARRAY_BUFFER, 
+            sizeof(Vertex) * numVerts,
+            &verticesArr[0][0],
+            GL_STATIC_DRAW);
+    }
+
+    // triangles
+    {
+        // triangles = prepare_triangles
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * m.header.numIndices, &m.indices[0], GL_STATIC_DRAW);
+    }
+    
 
     // vertex position (location 0)
     glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
@@ -275,7 +296,7 @@ void init()
 
     load_shader();
 
-    init_gl_mesh(&mesh);
+    init_gl_mesh(&mesh, &md5m);
 
     // init model
     {
@@ -380,8 +401,6 @@ void mainloop()
 int main(int argc, char **argv)
 {
     read_md5model("assets/md5model.bin", &md5m);
-    Vertex* vertices = NULL;
-    prepare_vertices(&md5m.meshes[0], md5m.joints, vertices);
     read_mesh(&m, "assets/model.bin"); // TODO : read_md5model
     init();
 
