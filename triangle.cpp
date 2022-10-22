@@ -35,23 +35,6 @@ typedef struct model_t {
     glm::vec3 scale;
 } Model;
 
-typedef struct vertex_t {
-    glm::vec3 position;
-    glm::vec2 uv;
-} Vertex;
-
-struct MeshHeader {
-    int numVerts;
-    int numIndices;
-};
-
-struct Mesh {
-    MeshHeader header;
-
-    Vertex* verts;
-    int* indices;
-};
-
 SDL_Window* sdl_window;
 SDL_GLContext context;
 SDL_Event event;
@@ -61,9 +44,13 @@ Uint32 last_time;
 Uint32 current_time;
 
 Camera camera;
-Model mymodel;
-GlMesh mesh;
+Model mymodel; // For transformation
+
 Mesh m;
+MD5Model md5m;
+
+GlMesh mesh; // holds data on GPU
+
 
 float delta_time;
 bool quit = false;
@@ -83,7 +70,7 @@ void read_mesh(Mesh* m, char const* filename) // TODO: useless function, compute
 
     fread(&m->header, sizeof(MeshHeader), 1, fp);
 
-    printf("%d, %d\n", m->header.numVerts, m->header.numIndices / 3);
+    printf("M3D model\n%d, %d\n", m->header.numVerts, m->header.numIndices / 3);
 
     m->verts = (Vertex*)malloc(sizeof(Vertex) * m->header.numVerts);
     m->indices = (int*)malloc(sizeof(int) * m->header.numIndices);
@@ -240,7 +227,7 @@ typedef enum location_t {
     WEIGHT_IDS_LOC
 } Location;
 
-void init_mesh(GlMesh* mesh)
+void init_gl_mesh(GlMesh* mesh)
 {
     glGenVertexArrays(1, &mesh->vertex_array_obj);
     glGenBuffers(1, &mesh->vertex_buffer_obj);
@@ -288,7 +275,7 @@ void init()
 
     load_shader();
 
-    init_mesh(&mesh);
+    init_gl_mesh(&mesh);
 
     // init model
     {
@@ -392,15 +379,15 @@ void mainloop()
 
 int main(int argc, char **argv)
 {
-    MD5Model md5m;
     read_md5model("assets/md5model.bin", &md5m);
+    Vertex* vertices = NULL;
+    prepare_vertices(&md5m.meshes[0], md5m.joints, vertices);
+    read_mesh(&m, "assets/model.bin"); // TODO : read_md5model
+    init();
 
-    //read_mesh(&m, "assets/model.bin"); // TODO : read_md5model
-    //init();
+    mainloop();
 
-    //mainloop();
-
-    //destroy();
+    destroy();
 
     // TODO: free model, mesh
     return 0;

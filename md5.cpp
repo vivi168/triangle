@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 #include "md5.h"
 
 /*
@@ -39,7 +40,7 @@ void read_md5model(const char* filename, MD5Model* model)
 
 	fread(&model->header, sizeof(MD5ModelHeader), 1, fp);
 
-	printf("%d, %d\n", model->header.numJoints, model->header.numMeshes);
+	printf("MD5 model\n%d, %d\n", model->header.numJoints, model->header.numMeshes);
 
 	model->joints = (MD5Joint*)malloc(sizeof(MD5Joint) * model->header.numJoints);
 
@@ -97,5 +98,85 @@ void read_md5model(const char* filename, MD5Model* model)
 				mesh->weights[w].pos[X], mesh->weights[w].pos[Y], mesh->weights[w].pos[Z]
 			);
 		}
+	}
+}
+
+void quat_normalize(quat q)
+{
+	float mag = sqrt((q[X] * q[X]) + (q[Y] * q[Y]) + (q[Z] * q[Z]) + (q[W] * q[W]));
+
+	if (mag > 0.0f)
+	{
+		float one_over_mag = 1.0f / mag;
+
+		q[X] *= one_over_mag;
+		q[Y] *= one_over_mag;
+		q[Z] *= one_over_mag;
+		q[W] *= one_over_mag;
+	}
+}
+
+void quat_mulvec(const quat q, const vec3 v, quat out)
+{
+	out[W] = -(q[X] * v[X]) - (q[Y] * v[Y]) - (q[Z] * v[Z]);
+	out[X] =  (q[W] * v[X]) + (q[Y] * v[Z]) - (q[Z] * v[Y]);
+	out[Y] =  (q[W] * v[Y]) + (q[Z] * v[X]) - (q[X] * v[Z]);
+	out[Z] =  (q[W] * v[Z]) + (q[X] * v[Y]) - (q[Y] * v[X]);
+}
+
+void quat_mulquat(const quat qa, const quat qb, quat out)
+{
+	out[W] = (qa[W] * qb[W]) - (qa[X] * qb[X]) - (qa[Y] * qb[Y]) - (qa[Z] * qb[Z]);
+	out[X] = (qa[X] * qb[W]) + (qa[W] * qb[X]) + (qa[Y] * qb[Z]) - (qa[Z] * qb[Y]);
+	out[Y] = (qa[Y] * qb[W]) + (qa[W] * qb[Y]) + (qa[Z] * qb[X]) - (qa[X] * qb[Z]);
+	out[Z] = (qa[Z] * qb[W]) + (qa[W] * qb[Z]) + (qa[X] * qb[Y]) - (qa[Y] * qb[X]);
+}
+
+void quat_rotate_point(const quat q, const vec3 in, vec3 out)
+{
+	quat tmp, inv, final;
+
+	inv[X] = -q[X]; inv[Y] = -q[Y];
+	inv[Z] = -q[Z]; inv[W] = q[W];
+
+	quat_normalize(inv);
+
+	quat_mulvec(q, in, tmp);
+	quat_mulquat(tmp, inv, final);
+
+	out[X] = final[X];
+	out[Y] = final[Y];
+	out[Z] = final[Z];
+}
+
+void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex* vertices)
+{
+	vertices = (Vertex*)malloc(sizeof(Vertex) * mesh->header.numVerts);
+
+	for (int k = 0; k < mesh->header.numVerts; k++) {
+		MD5Vertex* v = &mesh->vertices[k];
+		vec3 finalPos = { 0, 0, 0 };
+
+		for (int i = 0; i < v->countWeight; i++) {
+			MD5Weight* w = &mesh->weights[v->startWeight + i];
+			MD5Joint* joint = &joints[w->jointIndex];
+
+			vec3 wv;
+			quat_rotate_point(joint->orient, w->pos, wv);
+
+			finalPos[X] += (joint->pos[X] + wv[X]) * w->bias;
+			finalPos[Y] += (joint->pos[Y] + wv[Y]) * w->bias;
+			finalPos[Z] += (joint->pos[Z] + wv[Z]) * w->bias;
+		}
+
+		vertices[k].position.x = finalPos[X];
+		vertices[k].position.y = finalPos[Z];
+		vertices[k].position.z = -finalPos[Y];
+		vertices[k].uv.x = v->st[X];
+		vertices[k].uv.y = v->st[Y];
+
+		printf("*pos: (%f %f %f) uv: [%f %f]\n",
+			vertices[k].position.x, vertices[k].position.y, vertices[k].position.z,
+			vertices[k].uv.x, vertices[k].uv.y);
 	}
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/glm.hpp>
+
 enum {
 	X = 0, Y, Z, W
 };
@@ -57,5 +59,22 @@ typedef struct md5_model_t {
 } MD5Model;
 
 
+typedef struct vertex_t {
+	glm::vec3 position;
+	glm::vec2 uv;
+} Vertex;
+
+struct MeshHeader {
+	int numVerts;
+	int numIndices;
+};
+
+struct Mesh {
+	MeshHeader header;
+
+	Vertex* verts;
+	int* indices;
+};
 
 void read_md5model(const char* filename, MD5Model* model);
+void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex* vertices);
