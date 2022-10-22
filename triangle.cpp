@@ -25,6 +25,7 @@
 #define WINDOW_HEIGHT 600
 
 typedef struct gl_mesh_t {
+    int numTris, numVerts;
     GLuint vertex_array_obj, vertex_buffer_obj, element_buffer_obj;
 } GlMesh;
 
@@ -46,46 +47,13 @@ Uint32 current_time;
 Camera camera;
 Model mymodel; // For transformation
 
-Mesh m;
 MD5Model md5m;
-
 GlMesh mesh; // holds data on GPU
 
 
 float delta_time;
 bool quit = false;
 InputManager &input_mgr = InputManager::instance();
-
-void read_mesh(Mesh* m, char const* filename) // TODO: useless function, compute from MD5Model
-{
-    FILE* fp;
-#ifdef _WIN32
-    fopen_s(&fp, filename, "rb");
-#else
-    fp = fopen(filename, "rb");
-#endif
-
-    if (!fp)
-        exit(EXIT_FAILURE);
-
-    fread(&m->header, sizeof(MeshHeader), 1, fp);
-
-    printf("M3D model\n%d, %d\n", m->header.numVerts, m->header.numIndices / 3);
-
-    m->verts = (Vertex*)malloc(sizeof(Vertex) * m->header.numVerts);
-    m->indices = (int*)malloc(sizeof(int) * m->header.numIndices);
-
-    fread(m->verts, sizeof(Vertex), m->header.numVerts, fp);
-    fread(m->indices, sizeof(int), m->header.numIndices, fp);
-
-    for (int i = 0; i < m->header.numVerts; i++)
-        printf("pos: (%f %f %f) uv: [%f %f]\n",
-            m->verts[i].position.x, m->verts[i].position.y, m->verts[i].position.z,
-            m->verts[i].uv.x, m->verts[i].uv.y);
-
-    for (int i = 0; i < m->header.numIndices; i+=3)
-        printf("%d %d %d\n", m->indices[i], m->indices[i+1], m->indices[i+2]);
-}
 
 glm::mat4 model_mat(Model* m)
 {
@@ -235,20 +203,17 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
 
     glBindVertexArray(mesh->vertex_array_obj);
 
-    int numVerts = 0;
-    int numTris = 0;
-
     Vertex* verticesArr = NULL;
     int* indices = NULL;
-    prepare_model(&md5m, &verticesArr, indices, &numVerts, &numTris);
-    printf("init gl mesh %d %d\n", numVerts, numTris);
+    prepare_model(&md5m, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
+    printf("init gl mesh %d %d\n", mesh->numVerts, mesh->numTris);
     
     // vertices
     {
         // vertices = prepare_vertices
         glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
         glBufferData(GL_ARRAY_BUFFER, 
-            sizeof(Vertex) * numVerts,
+            sizeof(Vertex) * mesh->numVerts,
             &verticesArr[0],
             GL_STATIC_DRAW);
     }
@@ -257,7 +222,7 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
     {
         // triangles = prepare_triangles
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * m.header.numIndices, &m.indices[0], GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * mesh->numTris * 3, &indices[0], GL_STATIC_DRAW);
     }
     
 
@@ -321,19 +286,16 @@ void render()
 
     glUseProgram(program);
     glm::mat4 mvp;
-
-    {
-        glm::mat4 p = glm::perspective(camera.zoom(), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 1000.0f);
-        glm::mat4 v = camera.look_at();
-        glm::mat4 m = model_mat(&mymodel);
-        mvp = p * v * m;
-    }
-
+    glm::mat4 p = glm::perspective(camera.zoom(), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 1000.0f);
+    glm::mat4 v = camera.look_at();
+    glm::mat4 m = model_mat(&mymodel);
+    mvp = p * v * m;
+    
     GLuint mvp_loc = glGetUniformLocation(program, "mvp");
     glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
 
     glBindVertexArray(mesh.vertex_array_obj);
-    glDrawElements(GL_TRIANGLES, sizeof(int) * m.header.numIndices / 3, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, sizeof(int) * mesh.numTris, GL_UNSIGNED_INT, 0);
 
     SDL_GL_SwapWindow(sdl_window);
 }
@@ -400,7 +362,6 @@ void mainloop()
 int main(int argc, char **argv)
 {
     read_md5model("assets/md5model.bin", &md5m);
-    read_mesh(&m, "assets/model.bin"); // TODO : read_md5model
     init();
 
     mainloop();

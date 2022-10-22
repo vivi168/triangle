@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <cmath>
 #include "md5.h"
 
@@ -153,7 +154,7 @@ void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex** vertices, int of
 }
 
 // TODO: pass animation, to use correct joints
-void prepare_model(MD5Model* model, Vertex** vertices, int* indices, int* nv, int* nt)
+void prepare_model(MD5Model* model, Vertex** vertices, int** indices, int* nv, int* nt)
 {
 	int numVerts = 0;
 	int numTris = 0;
@@ -163,15 +164,22 @@ void prepare_model(MD5Model* model, Vertex** vertices, int* indices, int* nv, in
 	}
 
 	*vertices = (Vertex*)malloc(sizeof(Vertex) * numVerts);
+	*indices = (int*)malloc(sizeof(int) * numTris * 3);
 
-	int offset = 0;
+	int vertOffset = 0;
+	int triOffset = 0;
 	for (int i = 0; i < model->header.numMeshes; i++) {
 		// TODO: subsets, increment triangle indices by subset start
 		//prepare_vertices(&model->meshes[i], model->joints, vertices[i]);
 		MD5Mesh* mesh = &model->meshes[i];
-		prepare_vertices(&model->meshes[i], model->joints, vertices, offset);
+		prepare_vertices(&model->meshes[i], model->joints, vertices, vertOffset);
 
-		offset += model->meshes[i].header.numVerts;
+		// void *memcpy(void *dest, const void * src, size_t n)
+		// TODO : need to increment indices by vertOffset
+		memcpy(indices[triOffset], model->meshes[i].tris, sizeof(MD5Triangle) * model->meshes[i].header.numTris);
+
+		vertOffset += model->meshes[i].header.numVerts;
+		triOffset += model->meshes[i].header.numTris;
 	}
 
 	*nv = numVerts;

@@ -58,23 +58,10 @@ typedef struct md5_model_t {
 	MD5Mesh* meshes;
 } MD5Model;
 
-
 typedef struct vertex_t {
 	glm::vec3 position;
 	glm::vec2 uv;
 } Vertex;
 
-struct MeshHeader {
-	int numVerts;
-	int numIndices;
-};
-
-struct Mesh {
-	MeshHeader header;
-
-	Vertex* verts;
-	int* indices;
-};
-
 void read_md5model(const char* filename, MD5Model* model);
-void prepare_model(MD5Model* model, Vertex** vertices, int* indices, int*, int*);
+void prepare_model(MD5Model* model, Vertex** vertices, int** indices, int*, int*);
