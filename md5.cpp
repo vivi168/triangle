@@ -126,10 +126,8 @@ void quat_rotate_point(const quat q, const vec3 in, vec3 out)
 	out[Z] = final[Z];
 }
 
-void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex** vertices)
+void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex** vertices, int offset)
 {
-	*vertices = (Vertex*)malloc(sizeof(Vertex) * mesh->header.numVerts);
-
 	for (int k = 0; k < mesh->header.numVerts; k++) {
 		MD5Vertex* v = &mesh->vertices[k];
 		vec3 finalPos = { 0, 0, 0 };
@@ -146,16 +144,16 @@ void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex** vertices)
 			finalPos[Z] += (joint->pos[Z] + wv[Z]) * w->bias;
 		}
 
-		(*vertices)[k].position.x = finalPos[X];
-		(*vertices)[k].position.y = finalPos[Z];
-		(*vertices)[k].position.z = -finalPos[Y];
-		(*vertices)[k].uv.x = v->st[X];
-		(*vertices)[k].uv.y = v->st[Y];
+		(*vertices)[k + offset].position.x = finalPos[X];
+		(*vertices)[k + offset].position.y = finalPos[Z];
+		(*vertices)[k + offset].position.z = -finalPos[Y];
+		(*vertices)[k + offset].uv.x = v->st[X];
+		(*vertices)[k + offset].uv.y = v->st[Y];
 	}
 }
 
 // TODO: pass animation, to use correct joints
-void prepare_model(MD5Model* model, Vertex*** vertices, int* indices, int* nv, int* nt)
+void prepare_model(MD5Model* model, Vertex** vertices, int* indices, int* nv, int* nt)
 {
 	int numVerts = 0;
 	int numTris = 0;
@@ -164,13 +162,16 @@ void prepare_model(MD5Model* model, Vertex*** vertices, int* indices, int* nv, i
 		numTris += model->meshes[i].header.numTris;
 	}
 
-	*vertices = (Vertex**)malloc(sizeof(Vertex*) * numVerts);
+	*vertices = (Vertex*)malloc(sizeof(Vertex) * numVerts);
 
+	int offset = 0;
 	for (int i = 0; i < model->header.numMeshes; i++) {
 		// TODO: subsets, increment triangle indices by subset start
 		//prepare_vertices(&model->meshes[i], model->joints, vertices[i]);
 		MD5Mesh* mesh = &model->meshes[i];
-		prepare_vertices(&model->meshes[i], model->joints, &(*vertices)[i]);
+		prepare_vertices(&model->meshes[i], model->joints, vertices, offset);
+
+		offset += model->meshes[i].header.numVerts;
 	}
 
 	*nv = numVerts;

@@ -238,19 +238,18 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
     int numVerts = 0;
     int numTris = 0;
 
-    Vertex** verticesArr = NULL;
+    Vertex* verticesArr = NULL;
     int* indices = NULL;
     prepare_model(&md5m, &verticesArr, indices, &numVerts, &numTris);
     printf("init gl mesh %d %d\n", numVerts, numTris);
     
-
     // vertices
     {
         // vertices = prepare_vertices
         glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
         glBufferData(GL_ARRAY_BUFFER, 
             sizeof(Vertex) * numVerts,
-            &verticesArr[0][0],
+            &verticesArr[0],
             GL_STATIC_DRAW);
     }
 

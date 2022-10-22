@@ -77,4 +77,4 @@ struct Mesh {
 };
 
 void read_md5model(const char* filename, MD5Model* model);
-void prepare_model(MD5Model* model, Vertex*** vertices, int* indices, int*, int*);
+void prepare_model(MD5Model* model, Vertex** vertices, int* indices, int*, int*);
