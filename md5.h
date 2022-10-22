@@ -16,10 +16,6 @@ typedef struct md5_vertex_t {
 	int countWeight;
 } MD5Vertex;
 
-typedef struct md5_triangle_t {
-	int vertIndices[3];
-} MD5Triangle;
-
 typedef struct MD5_weight_t {
 	int jointIndex;
 	float bias;
@@ -42,7 +38,7 @@ typedef struct md5_mesh_t {
 	MD5MeshHeader header;
 
 	MD5Vertex* vertices;
-	MD5Triangle* tris;
+	int* indices;
 	MD5Weight* weights;
 } MD5Mesh;
 
@@ -64,4 +60,4 @@ typedef struct vertex_t {
 } Vertex;
 
 void read_md5model(const char* filename, MD5Model* model);
-void prepare_model(MD5Model* model, Vertex** vertices, int** indices, int*, int*);
+void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int*, int*);

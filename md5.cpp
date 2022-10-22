@@ -54,8 +54,8 @@ void read_md5model(const char* filename, MD5Model* model)
 		//}
 
 		// Tris
-		mesh->tris = (MD5Triangle*)malloc(sizeof(MD5Triangle) * mesh->header.numTris);
-		fread(mesh->tris, sizeof(MD5Triangle), mesh->header.numTris, fp);
+		mesh->indices = (int*)malloc(sizeof(int) * mesh->header.numTris * 3);
+		fread(mesh->indices, sizeof(int) * 3, mesh->header.numTris, fp);
 
 		//for (int t = 0; t < mesh->header.numTris; t++) {
 		//	printf("%d %d %d\n",
@@ -127,7 +127,7 @@ void quat_rotate_point(const quat q, const vec3 in, vec3 out)
 	out[Z] = final[Z];
 }
 
-void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex** vertices, int offset)
+void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vertices, const int offset)
 {
 	for (int k = 0; k < mesh->header.numVerts; k++) {
 		MD5Vertex* v = &mesh->vertices[k];
@@ -135,7 +135,7 @@ void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex** vertices, int of
 
 		for (int i = 0; i < v->countWeight; i++) {
 			MD5Weight* w = &mesh->weights[v->startWeight + i];
-			MD5Joint* joint = &joints[w->jointIndex];
+			const MD5Joint* joint = &joints[w->jointIndex];
 
 			vec3 wv;
 			quat_rotate_point(joint->orient, w->pos, wv);
@@ -154,7 +154,7 @@ void prepare_vertices(MD5Mesh* mesh, MD5Joint* joints, Vertex** vertices, int of
 }
 
 // TODO: pass animation, to use correct joints
-void prepare_model(MD5Model* model, Vertex** vertices, int** indices, int* nv, int* nt)
+void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int* nv, int* nt)
 {
 	int numVerts = 0;
 	int numTris = 0;
@@ -169,14 +169,11 @@ void prepare_model(MD5Model* model, Vertex** vertices, int** indices, int* nv, i
 	int vertOffset = 0;
 	int triOffset = 0;
 	for (int i = 0; i < model->header.numMeshes; i++) {
-		// TODO: subsets, increment triangle indices by subset start
-		//prepare_vertices(&model->meshes[i], model->joints, vertices[i]);
-		MD5Mesh* mesh = &model->meshes[i];
 		prepare_vertices(&model->meshes[i], model->joints, vertices, vertOffset);
 
-		// void *memcpy(void *dest, const void * src, size_t n)
-		// TODO : need to increment indices by vertOffset
-		memcpy(indices[triOffset], model->meshes[i].tris, sizeof(MD5Triangle) * model->meshes[i].header.numTris);
+		for (int t = 0; t < model->meshes[i].header.numTris * 3; t++) {
+			(*indices)[triOffset + t] = model->meshes[i].indices[t] + vertOffset;
+		}
 
 		vertOffset += model->meshes[i].header.numVerts;
 		triOffset += model->meshes[i].header.numTris;
