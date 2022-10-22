@@ -59,5 +59,10 @@ typedef struct vertex_t {
 	glm::vec2 uv;
 } Vertex;
 
+typedef struct subset_t {
+	int vertStart, vertCount;
+	int triStart, triCount;
+} Subset;
+
 void read_md5model(const char* filename, MD5Model* model);
 void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int*, int*);

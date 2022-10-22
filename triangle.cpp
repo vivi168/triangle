@@ -26,7 +26,8 @@
 
 typedef struct gl_mesh_t {
     int numTris, numVerts;
-    GLuint vertex_array_obj, vertex_buffer_obj, element_buffer_obj;
+    GLuint vertex_buffer_obj, element_buffer_obj;
+    GLuint vertex_array_obj; // TODO have one per mesh in the md5model
 } GlMesh;
 
 typedef struct model_t {
@@ -197,38 +198,26 @@ typedef enum location_t {
 
 void init_gl_mesh(GlMesh* mesh, MD5Model* model)
 {
-    glGenVertexArrays(1, &mesh->vertex_array_obj);
-    glGenBuffers(1, &mesh->vertex_buffer_obj);
-    glGenBuffers(1, &mesh->element_buffer_obj);
-
-    glBindVertexArray(mesh->vertex_array_obj);
-
     Vertex* verticesArr = NULL;
     int* indices = NULL;
-    prepare_model(&md5m, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
-    printf("init gl mesh %d %d\n", mesh->numVerts, mesh->numTris);
-    
-    // vertices
-    {
-        // vertices = prepare_vertices
-        glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
-        glBufferData(GL_ARRAY_BUFFER, 
-            sizeof(Vertex) * mesh->numVerts,
-            &verticesArr[0],
-            GL_STATIC_DRAW);
-    }
+    prepare_model(&md5m, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris); // TODO subset struct
+    printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
 
-    // triangles
-    {
-        // triangles = prepare_triangles
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * mesh->numTris * 3, &indices[0], GL_STATIC_DRAW);
-    }
-    
+    glGenBuffers(1, &mesh->vertex_buffer_obj);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_STATIC_DRAW);
 
-    // vertex position (location 0)
-    glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
+    glGenBuffers(1, &mesh->element_buffer_obj);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * mesh->numTris * 3, &indices[0], GL_STATIC_DRAW);
+
+    // TODO: one for each mesh in the model
+    glGenVertexArrays(1, &mesh->vertex_array_obj);
+    glBindVertexArray(mesh->vertex_array_obj);
     glEnableVertexAttribArray(POSITION_LOC);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
+    glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -294,8 +283,9 @@ void render()
     GLuint mvp_loc = glGetUniformLocation(program, "mvp");
     glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
 
+    // TODO loop for each mesh in the model
     glBindVertexArray(mesh.vertex_array_obj);
-    glDrawElements(GL_TRIANGLES, sizeof(int) * mesh.numTris, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, mesh.numTris * 3, GL_UNSIGNED_INT, 0);
 
     SDL_GL_SwapWindow(sdl_window);
 }

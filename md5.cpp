@@ -172,7 +172,7 @@ void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int*
 		prepare_vertices(&model->meshes[i], model->joints, vertices, vertOffset);
 
 		for (int t = 0; t < model->meshes[i].header.numTris * 3; t++) {
-			(*indices)[triOffset + t] = model->meshes[i].indices[t] + vertOffset;
+			(*indices)[triOffset + t] = model->meshes[i].indices[t];
 		}
 
 		vertOffset += model->meshes[i].header.numVerts;
