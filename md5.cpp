@@ -188,7 +188,7 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 }
 
 // TODO: pass joint array to use instead of bind pose
-void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int* nv, int* nt)
+void prepare_model(const MD5Model* model, const MD5Joint* joints, Vertex** vertices, int** indices, int* nv, int* nt)
 {
 	int numVerts = 0;
 	int numTris = 0;
@@ -203,7 +203,7 @@ void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int*
 	int vertOffset = 0;
 	int triOffset = 0;
 	for (int i = 0; i < model->header.numMeshes; i++) {
-		prepare_vertices(&model->meshes[i], model->joints, vertices, vertOffset);
+		prepare_vertices(&model->meshes[i], joints, vertices, vertOffset);
 
 		for (int t = 0; t < model->meshes[i].header.numTris * 3; t++) {
 			(*indices)[triOffset + t] = model->meshes[i].indices[t] + vertOffset;

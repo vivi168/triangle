@@ -201,7 +201,8 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
 {
     Vertex* verticesArr = NULL;
     int* indices = NULL;
-    prepare_model(&md5m, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
+    //prepare_model(&md5m, md5m.joints, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
+    prepare_model(&md5m, md5a.frameJoints[7], &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
     printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
 
     glGenBuffers(1, &mesh->vertex_buffer_obj);
