@@ -10,6 +10,11 @@ typedef float vec2[2];
 typedef float vec3[3];
 typedef float quat[4];
 
+typedef struct vertex_t {
+	glm::vec3 position;
+	glm::vec2 uv;
+} Vertex;
+
 typedef struct md5_vertex_t {
 	vec2 st;
 	int startWeight;
@@ -54,10 +59,23 @@ typedef struct md5_model_t {
 	MD5Mesh* meshes;
 } MD5Model;
 
-typedef struct vertex_t {
-	glm::vec3 position;
-	glm::vec2 uv;
-} Vertex;
+typedef struct md5_anim_t {
+	int numFrames;
+	int numJoints;
+	int frameRate;
+
+	MD5Joint** frameJoints; // frameJoints[numFrames][numJoints]
+} MD5Anim;
+
+typedef struct md5_anim_info_t {
+	int curr_frame;
+	int next_frame;
+
+	double last_time;
+	double max_time;
+} MD5AnimInfo;
 
 void read_md5model(const char* filename, MD5Model* model);
+void read_md5anim(const char* filename, MD5Anim* anim);
+
 void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int*, int*);

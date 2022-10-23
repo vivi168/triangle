@@ -233,90 +233,6 @@ class MD5Mesh:
 
         return headerData + vertsData + trisData + weightsData
 
-class M3DVertex:
-    def __init__(self, pos=Vec3(), st=Vec2()):
-        self.pos = pos
-        self.uv = st
-
-    def pack(self):
-        posData = struct.pack('<fff', self.pos.x, self.pos.z, -self.pos.y)
-        uvData = struct.pack('<ff', self.uv.x, self.uv.y)
-        return posData + uvData
-
-class M3DSubSet:
-    def __init__(self, vertStart=0, vertCount=0, faceStart=0, faceCount=0):
-        self.vertStart = vertStart
-        self.vertCount = vertCount
-        self.faceStart = faceStart
-        self.faceCount = faceCount
-
-    def pack(self):
-       pass
-
-class M3DModel:
-    def __init__(self):
-        self.curVertStart = 0
-        self.curFaceStart = 0
-
-        self.verts = []
-        self.faces = []
-
-        self.subsets = []
-        self.skelFrames = []
-
-    def packMeshHeader(self):
-        # TODO handle models with multiple meshes
-        return struct.pack('<ii', len(self.verts), len(self.faces) * 3)
-
-    def packMaterials(self):
-        pass
-
-    def packSubsetsTable(self):
-        pass
-
-    def packVertices(self):
-        vertData = bytearray()
-        for v in self.verts:
-            vertData += v.pack()
-
-        return vertData
-
-    def packFaces(self):
-        faceData = bytearray()
-        for f in self.faces:
-            faceData += f.pack()
-
-        return faceData
-
-    def packAnimHeader(self):
-        pass
-
-    def packSkelFrame(self, skelFrame):
-        for s in skelFrame:
-            print(s)
-        print()
-
-        return bytearray()
-
-    def export(self):
-        meshHeaderData = self.packMeshHeader()
-        self.packMaterials()
-        self.packSubsetsTable()
-        vertData = self.packVertices()
-        faceData = self.packFaces()
-
-        # mesh data
-        with open('model.bin', 'wb') as f:
-            f.write(meshHeaderData + vertData + faceData)
-
-        # anim data
-        framesData = bytearray()
-        i = 0
-        for f in self.skelFrames:
-            print('frame {}'.format(i))
-            framesData += self.packSkelFrame(f)
-            i+=1
-
 class MD5Model:
     def __init__(self):
         self.numJoints = 0 # TODO raise if numJoints != len(joints)
@@ -411,44 +327,6 @@ class MD5Model:
         with open('md5model.bin', 'wb') as f:
             f.write(headerData + jointsData + meshesData)
 
-
-    def toM3D(self, m3d):
-        for m in self.meshes:
-            verts, tris = self.prepareMesh(m)
-            m3d.verts += verts
-            m3d.faces += tris
-            m3d.subsets.append(M3DSubSet(
-                m3d.curVertStart, len(verts),
-                m3d.curFaceStart, len(tris),
-                # TODO: material
-                ))
-            m3d.curVertStart += len(verts)
-            m3d.curFaceStart += len(tris)
-
-        return m3d
-
-    def prepareMesh(self, m):
-        verts = []
-
-        for v in m.verts:
-            startWeight = v.startWeight
-            countWeight = v.countWeight
-            finalPos = Vec3()
-
-            for i in range(countWeight):
-                w = m.weights[startWeight+i]
-                joint = self.joints[w.jointIndex]
-
-                wv = joint.orient.rotatePoint(w.pos)
-
-                finalPos.x += (joint.pos.x + wv.x) * w.bias
-                finalPos.y += (joint.pos.y + wv.y) * w.bias
-                finalPos.z += (joint.pos.z + wv.z) * w.bias
-
-            verts.append(M3DVertex(finalPos, v.st))
-
-        return verts, m.tris
-
 class JointInfo:
     def __init__(self, name='', parent=0, flags=0, startIndex=0):
         self.name = name
@@ -474,7 +352,7 @@ class MD5Anim:
         self.frameRate = 0
         self.numAnimatedComponents = 0
 
-        self.skelFrames = []
+        self.frameJoints = []
         self.bbox = []
 
         self.jointInfos = [] # JointInfo
@@ -499,13 +377,13 @@ class MD5Anim:
 
                 elif line.startswith('numFrames'):
                     self.numFrames = parse.search('numFrames {:d}', line)[0]
-                    self.skelFrames = [None] * self.numFrames
+                    self.frameJoints = [None] * self.numFrames
                     self.bbox = [None] * self.numFrames
 
                 elif line.startswith('numJoints'):
                     self.numJoints = parse.search('numJoints {:d}', line)[0]
                     for i in range(self.numFrames):
-                        self.skelFrames[i] = [None] * self.numJoints
+                        self.frameJoints[i] = [None] * self.numJoints
 
                     self.jointInfos = [None] * self.numJoints
                     self.baseFrame = [None] * self.numJoints
@@ -549,8 +427,6 @@ class MD5Anim:
                         raise Exception('wrong numAnimatedComponents for frame {}'.format(frameId))
                     self.buildFrameSkeleton(frameId, animFrameData)
 
-
-
     def buildFrameSkeleton(self, frameId, animFrameData):
         for i in range(self.numJoints):
             baseJoint = self.baseFrame[i]
@@ -588,7 +464,7 @@ class MD5Anim:
                 thisJoint.pos = animatedPos
                 thisJoint.orient = animatedOrient
             else:
-                parentJoint = self.skelFrames[frameId][parent]
+                parentJoint = self.frameJoints[frameId][parent]
                 rpos = parentJoint.orient.rotatePoint(animatedPos)
                 thisJoint.pos = Vec3()
                 thisJoint.pos.x = rpos.x + parentJoint.pos.x
@@ -598,26 +474,29 @@ class MD5Anim:
                 thisJoint.orient = parentJoint.orient.multQuat(animatedOrient)
                 thisJoint.orient.normalize()
 
-            self.skelFrames[frameId][i] = thisJoint
+            self.frameJoints[frameId][i] = thisJoint
 
-    def export(self, m3d):
-        m3d.skelFrames = self.skelFrames
+    def export(self):
+        headerData = struct.pack('<iii', self.numFrames, self.numJoints, self.frameRate)
 
-        return m3d
+        jointsData = bytearray()
 
+        for f in range(self.numFrames):
+            for j in self.frameJoints[f]:
+                print(j)
+                jointsData += j.pack()
+            print()
+
+        with open('md5anim.bin', 'wb') as f:
+            f.write(headerData + jointsData)
 
 
 if __name__ == '__main__':
-    out = M3DModel()
-
     model = MD5Model()
     model.from_file('cubeguy.md5mesh')
     model.export()
-    out = model.toM3D(out)
 
-    # print('animation')
     anim = MD5Anim()
     anim.from_file('running.md5anim')
-    out = anim.export(out)
+    anim.export()
 
-    out.export()

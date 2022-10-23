@@ -79,6 +79,19 @@ void read_md5model(const char* filename, MD5Model* model)
 	}
 }
 
+void read_md5anim(const char* filename, MD5Anim* anim)
+{
+	FILE* fp;
+#ifdef _WIN32
+	fopen_s(&fp, filename, "rb");
+#else
+	fp = fopen(filename, "rb");
+#endif
+
+	if (!fp)
+		exit(EXIT_FAILURE);
+}
+
 void quat_normalize(quat q)
 {
 	float mag = sqrt((q[X] * q[X]) + (q[Y] * q[Y]) + (q[Z] * q[Z]) + (q[W] * q[W]));
@@ -153,7 +166,7 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 	}
 }
 
-// TODO: pass animation, to use correct joints
+// TODO: pass joint array to use instead of bind pose
 void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int* nv, int* nt)
 {
 	int numVerts = 0;
