@@ -59,12 +59,5 @@ typedef struct vertex_t {
 	glm::vec2 uv;
 } Vertex;
 
-typedef struct subset_t {
-	int vertOffset, numVerts;
-	int triOffset, numTris;
-
-	unsigned int vertex_array_obj;
-} Subset;
-
 void read_md5model(const char* filename, MD5Model* model);
-void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, Subset** subsets, int* numSubsets, int*, int*);
+void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int*, int*);

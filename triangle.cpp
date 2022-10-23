@@ -27,8 +27,7 @@
 typedef struct gl_mesh_t {
     int numTris, numVerts, numSubsets;
     GLuint vertex_buffer_obj, element_buffer_obj;
-    Subset* subsets;
-    unsigned int vertex_array_obj;
+    GLuint vertex_array_obj;
 } GlMesh;
 
 typedef struct model_t {
@@ -201,7 +200,7 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
 {
     Vertex* verticesArr = NULL;
     int* indices = NULL;
-    prepare_model(&md5m, &verticesArr, &indices, &mesh->subsets, &mesh->numSubsets, &mesh->numVerts, &mesh->numTris); // TODO subset struct
+    prepare_model(&md5m, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
     printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
 
     glGenBuffers(1, &mesh->vertex_buffer_obj);
@@ -212,15 +211,12 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * mesh->numTris * 3, &indices[0], GL_STATIC_DRAW);
 
-    // TODO: one for each mesh in the model
-    for (int i = 0; i < mesh->numSubsets; i++) {
-        glGenVertexArrays(1, &mesh->subsets[i].vertex_array_obj);
-        glBindVertexArray(mesh->subsets[i].vertex_array_obj);
-        glEnableVertexAttribArray(POSITION_LOC);
-        glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
-        glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(mesh->subsets[i].vertOffset));
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
-    }
+    glGenVertexArrays(1, &mesh->vertex_array_obj);
+    glBindVertexArray(mesh->vertex_array_obj);
+    glEnableVertexAttribArray(POSITION_LOC);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
+    glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -228,9 +224,7 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
 
 void destroy_mesh(GlMesh* mesh)
 {
-    for (int i = 0; i < mesh->numSubsets; i++) {
-        glDeleteVertexArrays(1, &mesh->subsets[i].vertex_array_obj);
-    }
+    glDeleteVertexArrays(1, &mesh->vertex_array_obj);
     glDeleteBuffers(1, &mesh->vertex_buffer_obj);
     glDeleteBuffers(1, &mesh->element_buffer_obj);
 }
@@ -288,11 +282,8 @@ void render()
     GLuint mvp_loc = glGetUniformLocation(program, "mvp");
     glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
 
-    // TODO loop for each mesh in the model
-    for (int i = 0; i < mesh.numSubsets; i++) {
-        glBindVertexArray(mesh.subsets[i].vertex_array_obj);
-        glDrawElements(GL_TRIANGLES, mesh.subsets[i].numTris * 3, GL_UNSIGNED_INT, (void*)(mesh.subsets[i].triOffset));
-    }
+    glBindVertexArray(mesh.vertex_array_obj);
+    glDrawElements(GL_TRIANGLES, mesh.numTris * 3, GL_UNSIGNED_INT, (void*)0);
 
     SDL_GL_SwapWindow(sdl_window);
 }
