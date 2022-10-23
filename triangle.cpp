@@ -49,6 +49,7 @@ Camera camera;
 Model mymodel; // For transformation
 
 MD5Model md5m;
+MD5Anim md5a;
 GlMesh mesh; // holds data on GPU
 
 
@@ -350,6 +351,8 @@ void mainloop()
 int main(int argc, char **argv)
 {
     read_md5model("assets/md5model.bin", &md5m);
+    read_md5anim("assets/md5anim.bin", &md5a);
+
     init();
 
     mainloop();

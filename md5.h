@@ -59,11 +59,14 @@ typedef struct md5_model_t {
 	MD5Mesh* meshes;
 } MD5Model;
 
-typedef struct md5_anim_t {
+typedef struct md5_anim_header_t {
 	int numFrames;
 	int numJoints;
 	int frameRate;
+} MD5AnimHeader;
 
+typedef struct md5_anim_t {
+	MD5AnimHeader header;
 	MD5Joint** frameJoints; // frameJoints[numFrames][numJoints]
 } MD5Anim;
 

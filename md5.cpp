@@ -90,6 +90,27 @@ void read_md5anim(const char* filename, MD5Anim* anim)
 
 	if (!fp)
 		exit(EXIT_FAILURE);
+
+	fread(&anim->header, sizeof(MD5AnimHeader), 1, fp);
+
+	printf("MD5 anim\n%d, %d, %d\n", anim->header.numFrames, anim->header.numJoints, anim->header.frameRate);
+
+	anim->frameJoints = (MD5Joint**)malloc(sizeof(MD5Joint*) * anim->header.numFrames);
+
+	for (int i = 0; i < anim->header.numFrames; i++) {
+		anim->frameJoints[i] = (MD5Joint*)malloc(sizeof(MD5Joint) * anim->header.numJoints);
+		fread(anim->frameJoints[i], sizeof(MD5Joint), anim->header.numJoints, fp);
+
+		for (int k = 0; k < anim->header.numJoints; k++) {
+			MD5Joint* j = &anim->frameJoints[i][k];
+
+			//printf("parent: %d (%f %f %f) (%f %f %f %f)\n",
+			//	j->parent,
+			//	j->pos[X], j->pos[Y], j->pos[Z],
+			//	j->orient[X], j->orient[Y], j->orient[Z], j->orient[W]
+			//);
+		}
+	}
 }
 
 void quat_normalize(quat q)
