@@ -219,5 +219,16 @@ void prepare_model(const MD5Model* model, const MD5Joint* joints, Vertex** verti
 
 void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt)
 {
+	int maxFrames = anim->header.numFrames - 1;
 
+	animInfo->time += dt;
+
+	if (animInfo->time >= animInfo->frameDuration) {
+		animInfo->currFrame++;
+		animInfo->nextFrame++;
+		animInfo->time = 0.0;
+
+		if (animInfo->currFrame > maxFrames) animInfo->currFrame = 0;
+		if (animInfo->nextFrame > maxFrames) animInfo->nextFrame = 0;
+	}
 }

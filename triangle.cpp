@@ -54,7 +54,6 @@ GlMesh mesh; // holds data on GPU
 
 MD5AnimInfo animinfo;
 bool animated = false;
-int curFrame = 0;
 
 float delta_time;
 bool quit = false;
@@ -226,6 +225,8 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+    free(verticesArr);
 }
 
 void update_gl_mesh(GlMesh* mesh, MD5Model* model, MD5Joint* joints)
@@ -233,12 +234,12 @@ void update_gl_mesh(GlMesh* mesh, MD5Model* model, MD5Joint* joints)
     Vertex* verticesArr = NULL;
     int* indices = NULL;
     prepare_model(&md5m, joints, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
-    printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
 
     glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_DYNAMIC_DRAW);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * mesh->numVerts, &verticesArr[0]);
     glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+
+    free(verticesArr);
 }
 
 void destroy_mesh(GlMesh* mesh)
@@ -268,8 +269,6 @@ void init()
     load_shader();
 
     init_gl_mesh(&mesh, &md5m);
-    //update_gl_mesh(&mesh, &md5m, md5a.frameJoints[7]);
-
 
     // init model
     {
@@ -365,8 +364,9 @@ void mainloop()
 
         if (animated) {
             animate(&md5a, &animinfo, delta_time);
+            // TODO interpolate skeleton
 
-            update_gl_mesh(&mesh, &md5m, md5a.frameJoints[curFrame]);
+            update_gl_mesh(&mesh, &md5m, md5a.frameJoints[animinfo.currFrame]);
         }
 
         render();
@@ -381,11 +381,11 @@ int main(int argc, char **argv)
     
     {
         // TODO -> have anim info as part of anim ?
-        animinfo.curr_frame = 0;
-        animinfo.next_frame = 1;
+        animinfo.currFrame = 0;
+        animinfo.nextFrame = 1;
 
-        animinfo.last_time = 0;
-        animinfo.max_time = 1.0 / md5a.header.frameRate;
+        animinfo.time = 0;
+        animinfo.frameDuration = 1.0 / md5a.header.frameRate;
         animated = true;
     }
 

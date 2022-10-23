@@ -71,11 +71,11 @@ typedef struct md5_anim_t {
 } MD5Anim;
 
 typedef struct md5_anim_info_t {
-	int curr_frame;
-	int next_frame;
+	int currFrame;
+	int nextFrame;
 
-	double last_time;
-	double max_time;
+	double time;
+	double frameDuration;
 } MD5AnimInfo;
 
 void read_md5model(const char* filename, MD5Model* model);
