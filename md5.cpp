@@ -154,7 +154,7 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 }
 
 // TODO: pass animation, to use correct joints
-void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int* nv, int* nt)
+void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, Subset** subsets, int* numSubsets, int* nv, int* nt)
 {
 	int numVerts = 0;
 	int numTris = 0;
@@ -162,6 +162,9 @@ void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int*
 		numVerts += model->meshes[i].header.numVerts;
 		numTris += model->meshes[i].header.numTris;
 	}
+
+	*numSubsets = model->header.numMeshes;
+	*subsets = (Subset*)malloc(sizeof(Subset) * (*numSubsets));
 
 	*vertices = (Vertex*)malloc(sizeof(Vertex) * numVerts);
 	*indices = (int*)malloc(sizeof(int) * numTris * 3);
@@ -175,8 +178,13 @@ void prepare_model(const MD5Model* model, Vertex** vertices, int** indices, int*
 			(*indices)[triOffset + t] = model->meshes[i].indices[t];
 		}
 
+		(*subsets)[i].numVerts = model->meshes[i].header.numVerts;
+		(*subsets)[i].numTris = model->meshes[i].header.numTris;
+		(*subsets)[i].vertOffset = vertOffset * sizeof(Vertex);
+		(*subsets)[i].triOffset = triOffset * sizeof(int);
+
 		vertOffset += model->meshes[i].header.numVerts;
-		triOffset += model->meshes[i].header.numTris;
+		triOffset += model->meshes[i].header.numTris * 3;
 	}
 
 	*nv = numVerts;
