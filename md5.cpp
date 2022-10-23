@@ -216,3 +216,8 @@ void prepare_model(const MD5Model* model, const MD5Joint* joints, Vertex** verti
 	*nv = numVerts;
 	*nt = numTris;
 }
+
+void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt)
+{
+
+}

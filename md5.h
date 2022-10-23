@@ -82,3 +82,5 @@ void read_md5model(const char* filename, MD5Model* model);
 void read_md5anim(const char* filename, MD5Anim* anim);
 
 void prepare_model(const MD5Model* model, const MD5Joint* joints, Vertex** vertices, int** indices, int*, int*);
+
+void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt);

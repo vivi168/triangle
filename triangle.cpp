@@ -52,6 +52,9 @@ MD5Model md5m;
 MD5Anim md5a;
 GlMesh mesh; // holds data on GPU
 
+MD5AnimInfo animinfo;
+bool animated = false;
+int curFrame = 0;
 
 float delta_time;
 bool quit = false;
@@ -201,13 +204,14 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
 {
     Vertex* verticesArr = NULL;
     int* indices = NULL;
-    //prepare_model(&md5m, md5m.joints, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
-    prepare_model(&md5m, md5a.frameJoints[7], &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
+    // TODO allow NULL for joints, if joints == NULL -> use model bind pose joints
+    prepare_model(&md5m, md5m.joints, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
+    //prepare_model(&md5m, md5a.frameJoints[7], &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
     printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
 
     glGenBuffers(1, &mesh->vertex_buffer_obj);
     glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_DYNAMIC_DRAW);
 
     glGenBuffers(1, &mesh->element_buffer_obj);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
@@ -222,6 +226,19 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+}
+
+void update_gl_mesh(GlMesh* mesh, MD5Model* model, MD5Joint* joints)
+{
+    Vertex* verticesArr = NULL;
+    int* indices = NULL;
+    prepare_model(&md5m, joints, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
+    printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
+
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * mesh->numVerts, &verticesArr[0]);
+    glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 }
 
 void destroy_mesh(GlMesh* mesh)
@@ -251,6 +268,8 @@ void init()
     load_shader();
 
     init_gl_mesh(&mesh, &md5m);
+    //update_gl_mesh(&mesh, &md5m, md5a.frameJoints[7]);
+
 
     // init model
     {
@@ -344,6 +363,12 @@ void mainloop()
         input_mgr.update();
         process_input();
 
+        if (animated) {
+            animate(&md5a, &animinfo, delta_time);
+
+            update_gl_mesh(&mesh, &md5m, md5a.frameJoints[curFrame]);
+        }
+
         render();
         delay();
     }
@@ -353,6 +378,16 @@ int main(int argc, char **argv)
 {
     read_md5model("assets/md5model.bin", &md5m);
     read_md5anim("assets/md5anim.bin", &md5a);
+    
+    {
+        // TODO -> have anim info as part of anim ?
+        animinfo.curr_frame = 0;
+        animinfo.next_frame = 1;
+
+        animinfo.last_time = 0;
+        animinfo.max_time = 1.0 / md5a.header.frameRate;
+        animated = true;
+    }
 
     init();
 
