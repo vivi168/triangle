@@ -146,7 +146,7 @@ void quat_mulquat(const quat qa, const quat qb, quat out)
 
 void quat_rotate_point(const quat q, const vec3 in, vec3 out)
 {
-	quat tmp, inv, final;
+	quat tmp, inv, qout;
 
 	inv[X] = -q[X]; inv[Y] = -q[Y];
 	inv[Z] = -q[Z]; inv[W] = q[W];
@@ -154,11 +154,11 @@ void quat_rotate_point(const quat q, const vec3 in, vec3 out)
 	quat_normalize(inv);
 
 	quat_mulvec(q, in, tmp);
-	quat_mulquat(tmp, inv, final);
+	quat_mulquat(tmp, inv, qout);
 
-	out[X] = final[X];
-	out[Y] = final[Y];
-	out[Z] = final[Z];
+	out[X] = qout[X];
+	out[Y] = qout[Y];
+	out[Z] = qout[Z];
 }
 
 void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vertices, const int offset)
