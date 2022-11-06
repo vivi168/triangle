@@ -135,7 +135,7 @@ const char* read_shader(char const* filename)
     fseek(f, 0, SEEK_END);
     len = ftell(f);
     fseek(f, 0, SEEK_SET);
-    buffer = (char*)malloc(len);
+    buffer = (char*)malloc(len + 1);
 
     if (!buffer) {
         // TODO: error handling
@@ -143,6 +143,7 @@ const char* read_shader(char const* filename)
     }
 
     fread(buffer, 1, len, f);
+    buffer[len] = '\0';
     fclose(f);
 
     return buffer;
@@ -174,7 +175,7 @@ void load_shader()
     glGetShaderiv(frag_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(frag_shader, 1024, NULL, info_log);
-        fprintf(stderr, "Error: vertex shader: %s\n", info_log);
+        fprintf(stderr, "Error: frag shader: %s\n", info_log);
     }
 
     program = glCreateProgram();
@@ -190,6 +191,9 @@ void load_shader()
 
     glDeleteShader(vert_shader);
     glDeleteShader(frag_shader);
+
+    free((void*)vert_code);
+    free((void*)frag_code);
 }
 
 typedef enum location_t {
