@@ -2,7 +2,11 @@
 
 out vec4 out_color;
 
+in VertexData {
+    vec4 color;
+} i;
+
 void main()
 {
-    out_color = vec4(1, 0, 1, 1);
+    out_color = i.color;
 }

@@ -212,22 +212,25 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
     //prepare_model(&md5m, md5a.frameJoints[7], &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
     printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
 
+    glGenVertexArrays(1, &mesh->vertex_array_obj);
     glGenBuffers(1, &mesh->vertex_buffer_obj);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_DYNAMIC_DRAW);
-
     glGenBuffers(1, &mesh->element_buffer_obj);
+    glBindVertexArray(mesh->vertex_array_obj);
+
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_STATIC_DRAW);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * mesh->numTris * 3, &indices[0], GL_STATIC_DRAW);
 
-    glGenVertexArrays(1, &mesh->vertex_array_obj);
-    glBindVertexArray(mesh->vertex_array_obj);
-    glEnableVertexAttribArray(POSITION_LOC);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
+    // vertex position
     glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
+    glEnableVertexAttribArray(POSITION_LOC);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // texture coordinates
+    glVertexAttribPointer(UV_LOC, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexAttribArray(UV_LOC);
+
     glBindVertexArray(0);
 
     free(verticesArr);
