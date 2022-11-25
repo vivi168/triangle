@@ -4,9 +4,12 @@
 #include <cstdint>
 #include <cmath>
 
+#include <string>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #ifdef _WIN32
 #include <SDL.h>
@@ -199,8 +202,8 @@ void load_shader()
 typedef enum location_t {
     POSITION_LOC = 0,
     UV_LOC,
-    BONE_IDS_LOC,
-    WEIGHT_IDS_LOC
+    BLEND_IDX_LOC,
+    BLEND_WEIGHTS_LOC
 } Location;
 
 void init_gl_mesh(GlMesh* mesh, MD5Model* model)
@@ -211,23 +214,35 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
     prepare_model(&md5m, md5m.joints, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
     //prepare_model(&md5m, md5a.frameJoints[7], &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
     printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
+    build_invbindpose(&md5m);
 
+    glGenVertexArrays(1, &mesh->vertex_array_obj);
     glGenBuffers(1, &mesh->vertex_buffer_obj);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_DYNAMIC_DRAW);
-
     glGenBuffers(1, &mesh->element_buffer_obj);
+    glBindVertexArray(mesh->vertex_array_obj);
+
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_STATIC_DRAW);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * mesh->numTris * 3, &indices[0], GL_STATIC_DRAW);
 
-    glGenVertexArrays(1, &mesh->vertex_array_obj);
-    glBindVertexArray(mesh->vertex_array_obj);
-    glEnableVertexAttribArray(POSITION_LOC);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
+    // vertex position
     glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
+    glEnableVertexAttribArray(POSITION_LOC);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // texture coordinates
+    glVertexAttribPointer(UV_LOC, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexAttribArray(UV_LOC);
+
+    // bone idx
+    glVertexAttribPointer(BLEND_IDX_LOC, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, blend_idx));
+    glEnableVertexAttribArray(BLEND_IDX_LOC);
+
+    // bone idx
+    glVertexAttribPointer(BLEND_WEIGHTS_LOC, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, blend_weights));
+    glEnableVertexAttribArray(BLEND_WEIGHTS_LOC);
+
     glBindVertexArray(0);
 
     free(verticesArr);
@@ -297,14 +312,52 @@ void render()
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     glUseProgram(program);
-    glm::mat4 mvp;
-    glm::mat4 p = glm::perspective(camera.zoom(), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 1000.0f);
-    glm::mat4 v = camera.look_at();
-    glm::mat4 m = model_mat(&mymodel);
-    mvp = p * v * m;
     
-    GLuint mvp_loc = glGetUniformLocation(program, "mvp");
-    glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
+    {
+        glm::mat4 mvp;
+
+        glm::mat4 p = glm::perspective(camera.zoom(), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 1000.0f);
+        glm::mat4 v = camera.look_at();
+        glm::mat4 m = model_mat(&mymodel);
+        mvp = p * v * m;
+
+        GLuint mvp_loc = glGetUniformLocation(program, "mvp");
+        glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
+    }
+
+    {
+        // HERE TODO : if animated -> compute the bones matrices
+        std::vector<glm::mat4> bones;
+
+        const int numJoints = md5a.header.numJoints;
+        const MD5Joint* joints = md5a.frameJoints[animinfo.currFrame];
+        //const MD5Joint* joints = md5a.frameJoints[10];
+
+        for (int i = 0; i < numJoints; i++) {
+            const MD5Joint* joint = &joints[i];
+
+            glm::mat4 identity = glm::mat4(1.0f);
+            glm::mat4 translation = glm::translate(identity, glm::make_vec3(joint->pos));
+            glm::mat4 rotation = glm::toMat4(glm::make_quat(joint->orient));
+
+            glm::mat4 bonemat =  translation * rotation;
+            //bones.push_back(md5m.invBindPose[i] * bonemat);
+            bones.push_back(bonemat * md5m.invBindPose[i]);
+            //bones.push_back(identity);
+        }
+
+        for (int i = 0; i < bones.size(); i++) {
+            char loc[10];
+#ifdef _WIN32
+            sprintf_s(loc, 10, "bones[%d]", i);
+#else
+            sprintf(loc, "bones[%d]", i);
+#endif
+            GLuint bones_loc = glGetUniformLocation(program, loc);
+            glUniformMatrix4fv(bones_loc, 1, GL_FALSE, glm::value_ptr(bones[i]));
+        }
+
+    }
 
     glBindVertexArray(mesh.vertex_array_obj);
     glDrawElements(GL_TRIANGLES, mesh.numTris * 3, GL_UNSIGNED_INT, (void*)0);
@@ -370,7 +423,7 @@ void mainloop()
             animate(&md5a, &animinfo, delta_time);
             // TODO interpolate skeleton
 
-            update_gl_mesh(&mesh, &md5m, md5a.frameJoints[animinfo.currFrame]);
+            // update_gl_mesh(&mesh, &md5m, md5a.frameJoints[animinfo.currFrame]);
         }
 
         render();

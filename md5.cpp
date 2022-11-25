@@ -1,8 +1,14 @@
+#include <iostream>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
 #include "md5.h"
+
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 void read_md5model(const char* filename, MD5Model* model)
 {
@@ -167,6 +173,11 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 		MD5Vertex* v = &mesh->vertices[k];
 		vec3 finalPos = { 0, 0, 0 };
 
+		for (int i = 0; i < 4; i++) {
+			(*vertices)[k + offset].blend_idx[i] = -1.0f;
+			(*vertices)[k + offset].blend_weights[i] = 0.0f;
+		}
+
 		for (int i = 0; i < v->countWeight; i++) {
 			MD5Weight* w = &mesh->weights[v->startWeight + i];
 			const MD5Joint* joint = &joints[w->jointIndex];
@@ -177,6 +188,11 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 			finalPos[X] += (joint->pos[X] + wv[X]) * w->bias;
 			finalPos[Y] += (joint->pos[Y] + wv[Y]) * w->bias;
 			finalPos[Z] += (joint->pos[Z] + wv[Z]) * w->bias;
+
+			assert(i < 4);
+
+			(*vertices)[k + offset].blend_idx[i] = (float)w->jointIndex;
+			(*vertices)[k + offset].blend_weights[i] = w->bias;
 		}
 
 		(*vertices)[k + offset].position.x = finalPos[X];
@@ -230,5 +246,25 @@ void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt)
 
 		if (animInfo->currFrame > maxFrames) animInfo->currFrame = 0;
 		if (animInfo->nextFrame > maxFrames) animInfo->nextFrame = 0;
+	}
+}
+
+void build_invbindpose(MD5Model* model)
+{
+	model->invBindPose.clear();
+
+	for (int i = 0; i < model->header.numJoints; i++) {
+		const MD5Joint* joint = &model->joints[i];
+
+		glm::mat4x4 identity = glm::mat4(1.0f);
+		glm::mat4x4 translation = glm::translate(identity, glm::make_vec3(joint->pos));
+		glm::mat4x4 rotation = glm::toMat4(glm::make_quat(joint->orient));
+
+		glm::mat4x4 bindPose = translation * rotation;
+		glm::mat4x4 invBindPos = glm::inverse(bindPose);
+
+		model->invBindPose.push_back(invBindPos);
+
+		std::cout << glm::to_string(invBindPos) << std::endl;
 	}
 }

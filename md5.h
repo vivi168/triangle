@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <glm/glm.hpp>
 
 enum {
@@ -13,6 +14,9 @@ typedef float quat[4];
 typedef struct vertex_t {
 	glm::vec3 position;
 	glm::vec2 uv;
+	float blend_idx[4];
+	float blend_weights[4];
+	
 } Vertex;
 
 typedef struct md5_vertex_t {
@@ -57,6 +61,8 @@ typedef struct md5_model_t {
 
 	MD5Joint* joints;
 	MD5Mesh* meshes;
+
+	std::vector<glm::mat4x4> invBindPose;
 } MD5Model;
 
 typedef struct md5_anim_header_t {
@@ -84,3 +90,7 @@ void read_md5anim(const char* filename, MD5Anim* anim);
 void prepare_model(const MD5Model* model, const MD5Joint* joints, Vertex** vertices, int** indices, int*, int*);
 
 void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt);
+
+// for GPU
+
+void build_invbindpose(MD5Model* model);
