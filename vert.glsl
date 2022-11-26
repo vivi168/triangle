@@ -38,12 +38,16 @@ void main()
     }
     */
 
-    int bone_idx = int(in_blend_idx[0]);
-    totalPosition = bones[bone_idx] * in_blend_weights[0] * vec4(in_position, 1.0f);
-    gl_Position =  mvp * totalPosition;
+    mat4 matTransform = bones[int(in_blend_idx.x)] * in_blend_weights.x;
+	     matTransform += bones[int(in_blend_idx.y)] * in_blend_weights.y;
+	     matTransform += bones[int(in_blend_idx.z)] * in_blend_weights.z;
 
-    // o.color = vec4(in_blend_idx.xyz / 5, 1.0f);
-    // o.color = vec4(in_blend_idx[0] / 10, 0.0f, 0.0f , 1.0f);
+    float finalWeight = 1.0f - ( in_blend_weights.x + in_blend_weights.y + in_blend_weights.z );
 
-    o.color = vec4(totalPosition.xyz, 1.0f);
+    matTransform += bones[int(in_blend_idx.w)] * finalWeight;
+    vec4 position = matTransform * vec4(in_position, 1.0);
+
+    gl_Position =  mvp * position;
+
+    o.color = vec4(1.0f, 0.0f, 1.0f, 1.0f);
 }
