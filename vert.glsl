@@ -21,9 +21,9 @@ void main()
     transform += bones[int(in_blend_idx.y)] * in_blend_weights.y;
     transform += bones[int(in_blend_idx.z)] * in_blend_weights.z;
 
-    // Ensure sum of all weights amount to one
-    float final_weight = 1.0f - (in_blend_weights.x + in_blend_weights.y + in_blend_weights.z);
-    transform += bones[int(in_blend_idx.w)] * final_weight;
+    // Ensure the sum of all weights amounts to one
+    float weight_w = 1.0f - (in_blend_weights.x + in_blend_weights.y + in_blend_weights.z);
+    transform += bones[int(in_blend_idx.w)] * weight_w;
 
     vec4 position = transform * vec4(in_position, 1.0);
 
