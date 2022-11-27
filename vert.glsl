@@ -17,29 +17,6 @@ uniform mat4 bones[MAX_BONES];
 
 void main()
 {
-    /*
-    vec4 totalPosition = vec4(0.0f);
-
-    for(int i = 0 ; i < MAX_BONE_INFLUENCE ; i++)
-    {
-        int bone_idx = int(in_blend_idx[i]);
-
-        if(bone_idx < 0)
-            continue;
-
-        if(bone_idx >= MAX_BONES) {
-            totalPosition = vec4(0.0f);
-            break;
-        }
-
-        vec4 localPosition = bones[bone_idx] * vec4(in_position, 1.0f);
-        totalPosition += localPosition * in_blend_weights[i];
-    }
-
-    gl_Position =  mvp * totalPosition;
-    */
-
-    
     mat4 transform  = bones[int(in_blend_idx.x)] * in_blend_weights.x;
     transform += bones[int(in_blend_idx.y)] * in_blend_weights.y;
     transform += bones[int(in_blend_idx.z)] * in_blend_weights.z;
