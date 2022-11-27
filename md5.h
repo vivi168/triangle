@@ -73,6 +73,7 @@ typedef struct md5_anim_header_t {
 
 typedef struct md5_anim_t {
 	MD5AnimHeader header;
+	MD5Joint* baseFrame;
 	MD5Joint** frameJoints; // frameJoints[numFrames][numJoints]
 } MD5Anim;
 
