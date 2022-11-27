@@ -196,8 +196,8 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 		}
 
 		(*vertices)[k + offset].position.x = finalPos[X];
-		(*vertices)[k + offset].position.y = finalPos[Z];
-		(*vertices)[k + offset].position.z = -finalPos[Y];
+		(*vertices)[k + offset].position.y = finalPos[Y];
+		(*vertices)[k + offset].position.z = finalPos[Z];
 		(*vertices)[k + offset].uv.x = v->st[X];
 		(*vertices)[k + offset].uv.y = v->st[Y];
 	}
@@ -256,8 +256,7 @@ void build_invbindpose(MD5Model* model)
 	for (int i = 0; i < model->header.numJoints; i++) {
 		const MD5Joint* joint = &model->joints[i];
 
-		glm::vec3 translation = glm::vec3(joint->pos[X], joint->pos[Z], -joint->pos[Y]);
-		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), translation);
+		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint->pos));
 		glm::mat4x4 rotMat = glm::toMat4(glm::make_quat(joint->orient));
 
 		glm::mat4x4 bindPose = transMat * rotMat;

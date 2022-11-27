@@ -17,10 +17,9 @@ uniform mat4 bones[MAX_BONES];
 
 void main()
 {
-
+    /*
     vec4 totalPosition = vec4(0.0f);
 
-    /*
     for(int i = 0 ; i < MAX_BONE_INFLUENCE ; i++)
     {
         int bone_idx = int(in_blend_idx[i]);
@@ -36,16 +35,20 @@ void main()
         vec4 localPosition = bones[bone_idx] * vec4(in_position, 1.0f);
         totalPosition += localPosition * in_blend_weights[i];
     }
+
+    gl_Position =  mvp * totalPosition;
     */
 
-    mat4 matTransform = bones[int(in_blend_idx.x)] * in_blend_weights.x;
-	     matTransform += bones[int(in_blend_idx.y)] * in_blend_weights.y;
-	     matTransform += bones[int(in_blend_idx.z)] * in_blend_weights.z;
+    
+    mat4 transform  = bones[int(in_blend_idx.x)] * in_blend_weights.x;
+    transform += bones[int(in_blend_idx.y)] * in_blend_weights.y;
+    transform += bones[int(in_blend_idx.z)] * in_blend_weights.z;
 
-    float finalWeight = 1.0f - ( in_blend_weights.x + in_blend_weights.y + in_blend_weights.z );
+    // Ensure sum of all weights amount to one
+    float final_weight = 1.0f - (in_blend_weights.x + in_blend_weights.y + in_blend_weights.z);
+    transform += bones[int(in_blend_idx.w)] * final_weight;
 
-    matTransform += bones[int(in_blend_idx.w)] * finalWeight;
-    vec4 position = matTransform * vec4(in_position, 1.0);
+    vec4 position = transform * vec4(in_position, 1.0);
 
     gl_Position =  mvp * position;
 

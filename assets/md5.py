@@ -20,7 +20,7 @@ class Vec3:
         self.z = z
 
     def pack(self):
-        return struct.pack('<fff', self.x, self.y, self.z)
+        return struct.pack('<fff', self.x, self.z, -self.y)
 
     def trans4x4(self):
         m = np.identity(4)
@@ -42,7 +42,7 @@ class Quaternion:
         self.computeW()
 
     def pack(self):
-        return struct.pack('<ffff', self.x, self.y, self.z, self.w)
+        return struct.pack('<ffff', self.x, self.z, -self.y, self.w)
 
     def __str__(self):
         return '{:.6f} {:.6f} {:.6f} {:.6f}'.format(self.x, self.y, self.z, self.w)

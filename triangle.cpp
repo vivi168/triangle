@@ -212,7 +212,6 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
     int* indices = NULL;
     // TODO allow NULL for joints, if joints == NULL -> use model bind pose joints
     prepare_model(&md5m, md5m.joints, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
-    //prepare_model(&md5m, md5a.frameJoints[7], &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
     printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
     build_invbindpose(&md5m);
 
@@ -244,19 +243,6 @@ void init_gl_mesh(GlMesh* mesh, MD5Model* model)
     glEnableVertexAttribArray(BLEND_WEIGHTS_LOC);
 
     glBindVertexArray(0);
-
-    free(verticesArr);
-}
-
-void update_gl_mesh(GlMesh* mesh, MD5Model* model, MD5Joint* joints)
-{
-    Vertex* verticesArr = NULL;
-    int* indices = NULL;
-    prepare_model(&md5m, joints, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
-
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * mesh->numVerts, &verticesArr[0]);
-    glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 
     free(verticesArr);
 }
@@ -335,8 +321,7 @@ void render()
         for (int i = 0; i < numJoints; i++) {
             const MD5Joint* joint = &joints[i];
 
-            glm::vec3 translation = glm::vec3(joint->pos[X], joint->pos[Z], -joint->pos[Y]);
-            glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), translation);
+            glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint->pos));
             glm::mat4 rotMat = glm::toMat4(glm::make_quat(joint->orient));
 
             glm::mat4 bonemat = transMat * rotMat;
@@ -419,8 +404,6 @@ void mainloop()
         if (animated) {
             animate(&md5a, &animinfo, delta_time);
             // TODO interpolate skeleton
-
-            // update_gl_mesh(&mesh, &md5m, md5a.frameJoints[animinfo.currFrame]);
         }
 
         render();
