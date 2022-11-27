@@ -316,6 +316,8 @@ void render()
         std::vector<glm::mat4> bones;
 
         const int numJoints = md5a.header.numJoints;
+        // TODO interpolate between two frameJoints
+        // TODO helper function to generate Matrix
         const MD5Joint* joints = md5a.frameJoints[animinfo.currFrame];
 
         for (int i = 0; i < numJoints; i++) {
@@ -338,7 +340,6 @@ void render()
             GLuint bones_loc = glGetUniformLocation(program, loc);
             glUniformMatrix4fv(bones_loc, 1, GL_FALSE, glm::value_ptr(bones[i]));
         }
-
     }
 
     glBindVertexArray(mesh.vertex_array_obj);
