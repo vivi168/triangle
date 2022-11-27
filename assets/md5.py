@@ -337,6 +337,14 @@ class JointInfo:
     def __str__(self):
         return "{} {} {} {}".format(self.name, self.parent, self.flags, self.startIndex)
 
+class BaseFrameJoint:
+    def __init__(self, pos=None, orient=None):
+        self.pos = pos # Vec3
+        self.orient = orient # Quaternion
+
+    def __str__(self):
+        return "({}) ({})".format(self.pos, self.orient)
+
 class MD5Anim:
     def __init__(self):
         self.numFrames = 0
@@ -404,8 +412,7 @@ class MD5Anim:
                         data = parse.search('( {px:g} {py:g} {pz:g} ) ( {ox:g} {oy:g} {oz:g} )', baseFrameLine)
                         pos = Vec3(data['px'], data['py'], data['pz'])
                         orient = Quaternion(data['ox'], data['oy'], data['oz'])
-                        self.baseFrame[i] = MD5Joint("", 0, pos, orient)
-
+                        self.baseFrame[i] = BaseFrameJoint(pos, orient)
                 # frames
                 elif line.startswith('frame'):
                     frameId = parse.search('frame {id:d}', line)['id']
@@ -473,9 +480,6 @@ class MD5Anim:
         headerData = struct.pack('<iii', self.numFrames, self.numJoints, self.frameRate)
 
         jointsData = bytearray()
-
-        for j in self.baseFrame:
-            jointsData += j.pack()
 
         for f in range(self.numFrames):
             for j in self.frameJoints[f]:
