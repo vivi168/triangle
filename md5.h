@@ -3,6 +3,9 @@
 #include <vector>
 #include <glm/glm.hpp>
 
+#define MAX_BONES 100
+#define MAX_WEIGHTS 4
+
 enum {
 	X = 0, Y, Z, W
 };
@@ -14,8 +17,8 @@ typedef float quat[4];
 typedef struct vertex_t {
 	vec3 position;
 	vec2 uv;
-	float blend_idx[4];
-	float blend_weights[4];
+	float blend_idx[MAX_WEIGHTS];
+	float blend_weights[MAX_WEIGHTS];
 } Vertex;
 
 typedef struct md5_vertex_t {

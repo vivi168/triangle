@@ -1,5 +1,7 @@
 #version 330 core
 
+#define MAX_BONES 100
+
 layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec2 in_uv;
 layout (location = 2) in vec4 in_blend_idx;
@@ -8,9 +10,6 @@ layout (location = 3) in vec4 in_blend_weights;
 out VertexData {
     vec4 color;
 } o;
-
-const int MAX_BONES = 100;
-const int MAX_BONE_INFLUENCE = 4;
 
 uniform mat4 mvp;
 uniform mat4 bones[MAX_BONES];

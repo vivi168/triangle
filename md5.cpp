@@ -23,6 +23,8 @@ void read_md5model(const char* filename, MD5Model* model)
 
 	fread(&model->header, sizeof(MD5ModelHeader), 1, fp);
 
+	assert(model->header.numJoints < MAX_BONES);
+
 	//printf("MD5 model\n%d, %d\n", model->header.numJoints, model->header.numMeshes);
 
 	model->joints = (MD5Joint*)malloc(sizeof(MD5Joint) * model->header.numJoints);
@@ -172,8 +174,10 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 		MD5Vertex* v = &mesh->vertices[k];
 		vec3 finalPos = { 0, 0, 0 };
 
-		memset((*vertices)[k + offset].blend_idx, 0, sizeof(float) * 4);
-		memset((*vertices)[k + offset].blend_weights, 0, sizeof(float) * 4);
+		assert(v->countWeight < MAX_WEIGHTS);
+
+		memset((*vertices)[k + offset].blend_idx, 0, sizeof(float) * MAX_WEIGHTS);
+		memset((*vertices)[k + offset].blend_weights, 0, sizeof(float) * MAX_WEIGHTS);
 
 		for (int i = 0; i < v->countWeight; i++) {
 			MD5Weight* w = &mesh->weights[v->startWeight + i];
@@ -185,8 +189,6 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 			finalPos[X] += (joint->pos[X] + wv[X]) * w->bias;
 			finalPos[Y] += (joint->pos[Y] + wv[Y]) * w->bias;
 			finalPos[Z] += (joint->pos[Z] + wv[Z]) * w->bias;
-
-			assert(i < 4);
 
 			(*vertices)[k + offset].blend_idx[i] = (float)w->jointIndex;
 			(*vertices)[k + offset].blend_weights[i] = w->bias;
