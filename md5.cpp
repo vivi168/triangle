@@ -174,7 +174,7 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 		MD5Vertex* v = &mesh->vertices[k];
 		vec3 finalPos = { 0, 0, 0 };
 
-		assert(v->countWeight < MAX_WEIGHTS);
+		assert(v->countWeight <= MAX_WEIGHTS);
 
 		memset((*vertices)[k + offset].blend_idx, 0, sizeof(float) * MAX_WEIGHTS);
 		memset((*vertices)[k + offset].blend_weights, 0, sizeof(float) * MAX_WEIGHTS);
