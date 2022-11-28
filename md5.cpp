@@ -1,13 +1,13 @@
-#include <iostream>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
-#include "md5.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
+
+#include "md5.h"
 
 void read_md5model(const char* filename, MD5Model* model)
 {
@@ -263,13 +263,13 @@ void build_invbindpose(MD5Model* model)
 
 std::vector<glm::mat4> build_bonematrix(const MD5Model* model, const MD5Anim* anim, int frame)
 {
-	// TODO : if not animated, push identity matrix
 	std::vector<glm::mat4> bones;
 
 	const int numJoints = anim->header.numJoints;
 	// TODO interpolate between two frameJoints
 	const MD5Joint* joints = anim->frameJoints[frame];
 
+	// TODO should ensure model and anim file are compatibles
 	for (int i = 0; i < numJoints; i++) {
 		const MD5Joint* joint = &joints[i];
 

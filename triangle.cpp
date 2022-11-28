@@ -1,22 +1,20 @@
-// gcc triangle.c gl3w.c -I./include -lSDL2 -lGL
 #include <cstdlib>
 #include <cstdio>
 #include <cstdint>
 #include <cmath>
-
-#include <string>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include <GL/gl3w.h>
+
 #ifdef _WIN32
 #include <SDL.h>
 #else
 #include <SDL2/SDL.h>
 #endif
-#include <GL/gl3w.h>
 
 #include "input_manager.h"
 #include "camera.h"
@@ -34,7 +32,6 @@ typedef struct gl_mesh_t {
 } GlMesh;
 
 typedef struct model_t {
-    // char* filename;
     glm::vec3 translate;
     glm::vec3 rotate;
     glm::vec3 scale;

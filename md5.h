@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+
 #include <glm/glm.hpp>
 
 #define MAX_BONES 100
