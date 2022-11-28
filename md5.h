@@ -12,11 +12,10 @@ typedef float vec3[3];
 typedef float quat[4];
 
 typedef struct vertex_t {
-	glm::vec3 position;
-	glm::vec2 uv;
+	vec3 position;
+	vec2 uv;
 	float blend_idx[4];
 	float blend_weights[4];
-	
 } Vertex;
 
 typedef struct md5_vertex_t {

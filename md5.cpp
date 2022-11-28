@@ -5,10 +5,9 @@
 #include <cmath>
 #include "md5.h"
 
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/string_cast.hpp>
 
 void read_md5model(const char* filename, MD5Model* model)
 {
@@ -173,10 +172,8 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 		MD5Vertex* v = &mesh->vertices[k];
 		vec3 finalPos = { 0, 0, 0 };
 
-		for (int i = 0; i < 4; i++) {
-			(*vertices)[k + offset].blend_idx[i] = -1.0f;
-			(*vertices)[k + offset].blend_weights[i] = 0.0f;
-		}
+		memset((*vertices)[k + offset].blend_idx, 0, sizeof(float) * 4);
+		memset((*vertices)[k + offset].blend_weights, 0, sizeof(float) * 4);
 
 		for (int i = 0; i < v->countWeight; i++) {
 			MD5Weight* w = &mesh->weights[v->startWeight + i];
@@ -195,11 +192,8 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 			(*vertices)[k + offset].blend_weights[i] = w->bias;
 		}
 
-		(*vertices)[k + offset].position.x = finalPos[X];
-		(*vertices)[k + offset].position.y = finalPos[Y];
-		(*vertices)[k + offset].position.z = finalPos[Z];
-		(*vertices)[k + offset].uv.x = v->st[X];
-		(*vertices)[k + offset].uv.y = v->st[Y];
+		memcpy((*vertices)[k + offset].position, finalPos, sizeof(vec3));
+		memcpy((*vertices)[k + offset].uv, v->st, sizeof(vec2));
 	}
 }
 
@@ -259,11 +253,8 @@ void build_invbindpose(MD5Model* model)
 		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint->pos));
 		glm::mat4x4 rotMat = glm::toMat4(glm::make_quat(joint->orient));
 
-		glm::mat4x4 bindPose = transMat * rotMat;
-		glm::mat4x4 invBindPos = glm::inverse(bindPose);
+		glm::mat4x4 invBindPos = glm::inverse(transMat * rotMat);
 
 		model->invBindPose.push_back(invBindPos);
-
-		std::cout << glm::to_string(invBindPos) << std::endl;
 	}
 }
