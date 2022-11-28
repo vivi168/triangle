@@ -313,22 +313,7 @@ void render()
 
     {
         // TODO : if not animated, push identity matrix
-        std::vector<glm::mat4> bones;
-
-        const int numJoints = md5a.header.numJoints;
-        // TODO interpolate between two frameJoints
-        // TODO helper function to generate Matrix
-        const MD5Joint* joints = md5a.frameJoints[animinfo.currFrame];
-
-        for (int i = 0; i < numJoints; i++) {
-            const MD5Joint* joint = &joints[i];
-
-            glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint->pos));
-            glm::mat4 rotMat = glm::toMat4(glm::make_quat(joint->orient));
-
-            glm::mat4 bonemat = transMat * rotMat;
-            bones.push_back(bonemat * md5m.invBindPose[i]);
-        }
+        std::vector<glm::mat4> bones = build_bonematrix(&md5m, &md5a, animinfo.currFrame);
 
         for (int i = 0; i < bones.size(); i++) {
             char loc[10];

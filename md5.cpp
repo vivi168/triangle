@@ -260,3 +260,25 @@ void build_invbindpose(MD5Model* model)
 		model->invBindPose.push_back(invBindPos);
 	}
 }
+
+std::vector<glm::mat4> build_bonematrix(const MD5Model* model, const MD5Anim* anim, int frame)
+{
+	// TODO : if not animated, push identity matrix
+	std::vector<glm::mat4> bones;
+
+	const int numJoints = anim->header.numJoints;
+	// TODO interpolate between two frameJoints
+	const MD5Joint* joints = anim->frameJoints[frame];
+
+	for (int i = 0; i < numJoints; i++) {
+		const MD5Joint* joint = &joints[i];
+
+		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint->pos));
+		glm::mat4 rotMat = glm::toMat4(glm::make_quat(joint->orient));
+
+		glm::mat4 bonemat = transMat * rotMat;
+		bones.push_back(bonemat * model->invBindPose[i]);
+	}
+
+	return bones;
+}

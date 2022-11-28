@@ -96,3 +96,4 @@ void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt);
 // for GPU
 
 void build_invbindpose(MD5Model* model);
+std::vector<glm::mat4> build_bonematrix(const MD5Model* model, const MD5Anim* anim, int frame);
