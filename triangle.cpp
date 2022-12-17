@@ -47,7 +47,7 @@ struct GlMesh {
         SkinnedVertex* verticesArr = NULL;
         int* indices = NULL;
         // TODO allow NULL for joints, if joints == NULL -> use model bind pose joints
-        prepare_model(model, model->joints, &verticesArr, &indices, &numVerts, &numTris); // TODO method on m5model
+        model->prepare(&verticesArr, &indices, &numVerts, &numTris); // TODO method on m5model
         printf("init gl mesh v %d t %d\n", numVerts, numTris);
 
         glGenVertexArrays(1, &vertex_array_obj);
@@ -420,8 +420,8 @@ void mainloop()
 
 int main(int argc, char **argv)
 {
-    read_md5model("assets/md5model.bin", &md5m);
-    read_md5anim("assets/md5anim.bin", &md5a);
+    md5m.read("assets/md5model.bin");
+    md5a.read("assets/md5anim.bin");
     
     {
         // TODO -> have anim info as part of anim ?

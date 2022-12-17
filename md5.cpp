@@ -9,7 +9,7 @@
 
 #include "md5.h"
 
-void read_md5model(const char* filename, MD5Model* model)
+void MD5Model::read(const char* filename)
 {
 	FILE* fp;
 #ifdef _WIN32
@@ -21,18 +21,18 @@ void read_md5model(const char* filename, MD5Model* model)
 	if (!fp)
 		exit(EXIT_FAILURE);
 
-	fread(&model->header, sizeof(MD5ModelHeader), 1, fp);
+	fread(&header, sizeof(MD5ModelHeader), 1, fp);
 
-	assert(model->header.numJoints < MAX_BONES);
+	assert(header.numJoints < MAX_BONES);
 
-	//printf("MD5 model\n%d, %d\n", model->header.numJoints, model->header.numMeshes);
+	//printf("MD5 model\n%d, %d\n", header.numJoints, header.numMeshes);
 
-	model->joints = (MD5Joint*)malloc(sizeof(MD5Joint) * model->header.numJoints);
+	joints = (MD5Joint*)malloc(sizeof(MD5Joint) * header.numJoints);
 
-	fread(model->joints, sizeof(MD5Joint), model->header.numJoints, fp);
+	fread(joints, sizeof(MD5Joint), header.numJoints, fp);
 
-	for (int i = 0; i < model->header.numJoints; i++) {
-		MD5Joint* j = &model->joints[i];
+	for (int i = 0; i < header.numJoints; i++) {
+		MD5Joint* j = &joints[i];
 
 		//printf("parent: %d (%f %f %f) (%f %f %f %f)\n",
 		//	j->parent,
@@ -42,10 +42,10 @@ void read_md5model(const char* filename, MD5Model* model)
 	}
 
 	// READ MESH
-	model->meshes = (MD5Mesh*)malloc(sizeof(MD5Mesh) * model->header.numMeshes);
+	meshes = (MD5Mesh*)malloc(sizeof(MD5Mesh) * header.numMeshes);
 
-	for (int i = 0; i < model->header.numMeshes; i++) {
-		MD5Mesh* mesh = &model->meshes[i];
+	for (int i = 0; i < header.numMeshes; i++) {
+		MD5Mesh* mesh = &meshes[i];
 
 		fread(&mesh->header, sizeof(MD5MeshHeader), 1, fp);
 
@@ -86,7 +86,7 @@ void read_md5model(const char* filename, MD5Model* model)
 	}
 }
 
-void read_md5anim(const char* filename, MD5Anim* anim)
+void MD5Anim::read(const char* filename)
 {
 	FILE* fp;
 #ifdef _WIN32
@@ -98,18 +98,18 @@ void read_md5anim(const char* filename, MD5Anim* anim)
 	if (!fp)
 		exit(EXIT_FAILURE);
 
-	fread(&anim->header, sizeof(MD5AnimHeader), 1, fp);
+	fread(&header, sizeof(MD5AnimHeader), 1, fp);
 
-	printf("MD5 anim\n%d, %d, %d\n", anim->header.numFrames, anim->header.numJoints, anim->header.frameRate);
+	printf("MD5 anim\n%d, %d, %d\n", header.numFrames, header.numJoints, header.frameRate);
 
-	anim->frameJoints = (MD5Joint**)malloc(sizeof(MD5Joint*) * anim->header.numFrames);
+	frameJoints = (MD5Joint**)malloc(sizeof(MD5Joint*) * header.numFrames);
 
-	for (int i = 0; i < anim->header.numFrames; i++) {
-		anim->frameJoints[i] = (MD5Joint*)malloc(sizeof(MD5Joint) * anim->header.numJoints);
-		fread(anim->frameJoints[i], sizeof(MD5Joint), anim->header.numJoints, fp);
+	for (int i = 0; i < header.numFrames; i++) {
+		frameJoints[i] = (MD5Joint*)malloc(sizeof(MD5Joint) * header.numJoints);
+		fread(frameJoints[i], sizeof(MD5Joint), header.numJoints, fp);
 
-		for (int k = 0; k < anim->header.numJoints; k++) {
-			MD5Joint* j = &anim->frameJoints[i][k];
+		for (int k = 0; k < header.numJoints; k++) {
+			MD5Joint* j = &frameJoints[i][k];
 
 			//printf("parent: %d (%f %f %f) (%f %f %f %f)\n",
 			//	j->parent,
@@ -200,13 +200,13 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, SkinnedVertex
 }
 
 // TODO: pass joint array to use instead of bind pose
-void prepare_model(const MD5Model* model, const MD5Joint* joints, SkinnedVertex** vertices, int** indices, int* nv, int* nt)
+void MD5Model::prepare(SkinnedVertex** vertices, int** indices, int* nv, int* nt) const
 {
 	int numVerts = 0;
 	int numTris = 0;
-	for (int i = 0; i < model->header.numMeshes; i++) {
-		numVerts += model->meshes[i].header.numVerts;
-		numTris += model->meshes[i].header.numTris;
+	for (int i = 0; i < header.numMeshes; i++) {
+		numVerts += meshes[i].header.numVerts;
+		numTris += meshes[i].header.numTris;
 	}
 
 	*vertices = (SkinnedVertex*)malloc(sizeof(SkinnedVertex) * numVerts);
@@ -214,15 +214,15 @@ void prepare_model(const MD5Model* model, const MD5Joint* joints, SkinnedVertex*
 
 	int vertOffset = 0;
 	int triOffset = 0;
-	for (int i = 0; i < model->header.numMeshes; i++) {
-		prepare_vertices(&model->meshes[i], joints, vertices, vertOffset);
+	for (int i = 0; i < header.numMeshes; i++) {
+		prepare_vertices(&meshes[i], joints, vertices, vertOffset);
 
-		for (int t = 0; t < model->meshes[i].header.numTris * 3; t++) {
-			(*indices)[triOffset + t] = model->meshes[i].indices[t] + vertOffset;
+		for (int t = 0; t < meshes[i].header.numTris * 3; t++) {
+			(*indices)[triOffset + t] = meshes[i].indices[t] + vertOffset;
 		}
 
-		vertOffset += model->meshes[i].header.numVerts;
-		triOffset += model->meshes[i].header.numTris * 3;
+		vertOffset += meshes[i].header.numVerts;
+		triOffset += meshes[i].header.numTris * 3;
 	}
 
 	*nv = numVerts;
@@ -245,7 +245,7 @@ void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt)
 	}
 }
 
-std::vector<glm::mat4> MD5Model::inv_bindpose_matrices()
+std::vector<glm::mat4> MD5Model::inv_bindpose_matrices() const
 {
 	std::vector<glm::mat4> matrices;
 

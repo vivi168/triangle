@@ -55,7 +55,9 @@ struct MD5Model {
 	MD5Joint* joints;
 	MD5Mesh* meshes;
 
-	std::vector<glm::mat4> inv_bindpose_matrices();
+	void read(const char* filename);
+	void prepare(SkinnedVertex** vertices, int** indices, int* nv, int* nt) const;
+	std::vector<glm::mat4> inv_bindpose_matrices() const;
 };
 
 struct MD5AnimHeader {
@@ -68,6 +70,7 @@ struct MD5Anim {
 	MD5AnimHeader header;
 	MD5Joint** frameJoints; // frameJoints[numFrames][numJoints]
 
+	void read(const char* filename);
 	std::vector<glm::mat4> bone_matrices(int frame);
 };
 
@@ -78,10 +81,5 @@ struct MD5AnimInfo {
 	double time;
 	double frameDuration;
 };
-
-void read_md5model(const char* filename, MD5Model* model);
-void read_md5anim(const char* filename, MD5Anim* anim);
-
-void prepare_model(const MD5Model* model, const MD5Joint* joints, SkinnedVertex** vertices, int** indices, int*, int*);
 
 void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt);
