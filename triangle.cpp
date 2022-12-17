@@ -42,14 +42,13 @@ struct GlMesh {
 
     bool animated;
 
-    void init(MD5Model* model)
+    void init(const MD5Model* model)
     {
         SkinnedVertex* verticesArr = NULL;
         int* indices = NULL;
         // TODO allow NULL for joints, if joints == NULL -> use model bind pose joints
         prepare_model(model, model->joints, &verticesArr, &indices, &numVerts, &numTris); // TODO method on m5model
         printf("init gl mesh v %d t %d\n", numVerts, numTris);
-        build_invbindpose(model); // todo method on md5model
 
         glGenVertexArrays(1, &vertex_array_obj);
         glBindVertexArray(vertex_array_obj);
@@ -333,9 +332,10 @@ void render()
 
     {
         // TODO : if not animated, push identity matrix
-        std::vector<glm::mat4> bones = build_bonematrix(&md5m, &md5a, animinfo.currFrame);
+        std::vector<glm::mat4> inv = md5m.inv_bindpose_matrices(); // TODO compute only once per model
+        std::vector<glm::mat4> bones = md5a.bone_matrices(animinfo.currFrame);
 
-        for (int i = 0; i < bones.size(); i++) {
+        for (int i = 0; i < md5a.header.numJoints; i++) {
             char loc[10];
 #ifdef _WIN32
             sprintf_s(loc, 10, "bones[%d]", i);
@@ -343,7 +343,8 @@ void render()
             sprintf(loc, "bones[%d]", i);
 #endif
             GLuint bones_loc = glGetUniformLocation(program, loc);
-            glUniformMatrix4fv(bones_loc, 1, GL_FALSE, glm::value_ptr(bones[i]));
+            glm::mat4 final_bones = bones[i] * inv[i];
+            glUniformMatrix4fv(bones_loc, 1, GL_FALSE, glm::value_ptr(final_bones));
         }
     }
 

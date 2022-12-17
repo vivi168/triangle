@@ -245,29 +245,31 @@ void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt)
 	}
 }
 
-void build_invbindpose(MD5Model* model)
+std::vector<glm::mat4> MD5Model::inv_bindpose_matrices()
 {
-	model->invBindPose.clear();
+	std::vector<glm::mat4> matrices;
 
-	for (int i = 0; i < model->header.numJoints; i++) {
-		const MD5Joint* joint = &model->joints[i];
+	for (int i = 0; i < header.numJoints; i++) {
+		const MD5Joint* joint = &joints[i];
 
 		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint->pos));
 		glm::mat4x4 rotMat = glm::toMat4(glm::make_quat(joint->orient));
 
-		glm::mat4x4 invBindPos = glm::inverse(transMat * rotMat);
+		glm::mat4x4 matrix = glm::inverse(transMat * rotMat);
 
-		model->invBindPose.push_back(invBindPos);
+		matrices.push_back(matrix);
 	}
+
+	return matrices;
 }
 
-std::vector<glm::mat4> build_bonematrix(const MD5Model* model, const MD5Anim* anim, int frame)
+std::vector<glm::mat4> MD5Anim::bone_matrices(int frame)
 {
-	std::vector<glm::mat4> bones;
+	std::vector<glm::mat4> matrices;
 
-	const int numJoints = anim->header.numJoints;
+	const int numJoints = header.numJoints;
 	// TODO interpolate between two frameJoints
-	const MD5Joint* joints = anim->frameJoints[frame];
+	const MD5Joint* joints = frameJoints[frame];
 
 	// TODO should ensure model and anim file are compatibles
 	for (int i = 0; i < numJoints; i++) {
@@ -276,9 +278,9 @@ std::vector<glm::mat4> build_bonematrix(const MD5Model* model, const MD5Anim* an
 		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint->pos));
 		glm::mat4 rotMat = glm::toMat4(glm::make_quat(joint->orient));
 
-		glm::mat4 bonemat = transMat * rotMat;
-		bones.push_back(bonemat * model->invBindPose[i]);
+		glm::mat4 matrix = transMat * rotMat;
+		matrices.push_back(matrix);
 	}
 
-	return bones;
+	return matrices;
 }
