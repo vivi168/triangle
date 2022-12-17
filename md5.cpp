@@ -168,7 +168,7 @@ void quat_rotate_point(const quat q, const vec3 in, vec3 out)
 	out[Z] = qout[Z];
 }
 
-void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vertices, const int offset)
+void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, SkinnedVertex** vertices, const int offset)
 {
 	for (int k = 0; k < mesh->header.numVerts; k++) {
 		MD5Vertex* v = &mesh->vertices[k];
@@ -200,7 +200,7 @@ void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, Vertex** vert
 }
 
 // TODO: pass joint array to use instead of bind pose
-void prepare_model(const MD5Model* model, const MD5Joint* joints, Vertex** vertices, int** indices, int* nv, int* nt)
+void prepare_model(const MD5Model* model, const MD5Joint* joints, SkinnedVertex** vertices, int** indices, int* nv, int* nt)
 {
 	int numVerts = 0;
 	int numTris = 0;
@@ -209,7 +209,7 @@ void prepare_model(const MD5Model* model, const MD5Joint* joints, Vertex** verti
 		numTris += model->meshes[i].header.numTris;
 	}
 
-	*vertices = (Vertex*)malloc(sizeof(Vertex) * numVerts);
+	*vertices = (SkinnedVertex*)malloc(sizeof(SkinnedVertex) * numVerts);
 	*indices = (int*)malloc(sizeof(int) * numTris * 3);
 
 	int vertOffset = 0;

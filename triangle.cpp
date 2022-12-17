@@ -25,17 +25,93 @@
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 
-typedef struct gl_mesh_t {
+GLuint load_shader();
+
+enum Location {
+    POSITION_LOC = 0,
+    UV_LOC,
+    BLEND_IDX_LOC,
+    BLEND_WEIGHTS_LOC
+};
+
+struct GlMesh {
     int numTris, numVerts, numSubsets;
     GLuint vertex_buffer_obj, element_buffer_obj;
     GLuint vertex_array_obj;
-} GlMesh;
+    GLuint program;
 
-typedef struct model_t {
+    bool animated;
+
+    void init(MD5Model* model)
+    {
+        SkinnedVertex* verticesArr = NULL;
+        int* indices = NULL;
+        // TODO allow NULL for joints, if joints == NULL -> use model bind pose joints
+        prepare_model(model, model->joints, &verticesArr, &indices, &numVerts, &numTris); // TODO method on m5model
+        printf("init gl mesh v %d t %d\n", numVerts, numTris);
+        build_invbindpose(model); // todo method on md5model
+
+        glGenVertexArrays(1, &vertex_array_obj);
+        glBindVertexArray(vertex_array_obj);
+
+        glGenBuffers(1, &vertex_buffer_obj);
+        glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_obj);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(SkinnedVertex) * numVerts, &verticesArr[0], GL_STATIC_DRAW);
+
+        glGenBuffers(1, &element_buffer_obj);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer_obj);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * numTris * 3, &indices[0], GL_STATIC_DRAW);
+
+        // vertex position
+        glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)0);
+        glEnableVertexAttribArray(POSITION_LOC);
+
+        // texture coordinates
+        glVertexAttribPointer(UV_LOC, 2, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, uv));
+        glEnableVertexAttribArray(UV_LOC);
+
+        // bone idx
+        glVertexAttribPointer(BLEND_IDX_LOC, 4, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, blend_idx));
+        glEnableVertexAttribArray(BLEND_IDX_LOC);
+
+        // bone weigts
+        glVertexAttribPointer(BLEND_WEIGHTS_LOC, 4, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, blend_weights));
+        glEnableVertexAttribArray(BLEND_WEIGHTS_LOC);
+
+        glBindVertexArray(0);
+
+        free(verticesArr);
+
+        animated = true;
+    }
+
+    void destroy()
+    {
+        glDeleteVertexArrays(1, &vertex_array_obj);
+        glDeleteBuffers(1, &vertex_buffer_obj);
+        glDeleteBuffers(1, &element_buffer_obj);
+    }
+
+};
+
+struct Model {
     glm::vec3 translate;
     glm::vec3 rotate;
     glm::vec3 scale;
-} Model;
+
+    glm::mat4 model_mat()
+    {
+        glm::mat4 mat = glm::mat4(1.0f);
+        mat = glm::translate(mat, translate);
+        mat = glm::scale(mat, scale);
+
+        return mat;
+    }
+
+    void draw(const Camera* camera, const GlMesh* m)
+    {
+    }
+};
 
 SDL_Window* sdl_window;
 SDL_GLContext context;
@@ -58,15 +134,6 @@ bool animated = false;
 float delta_time;
 bool quit = false;
 InputManager &input_mgr = InputManager::instance();
-
-glm::mat4 model_mat(Model* m)
-{
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, m->translate);
-    model = glm::scale(model, m->scale);
-
-    return model;
-}
 
 void frame_start()
 {
@@ -149,8 +216,9 @@ const char* read_shader(char const* filename)
     return buffer;
 }
 
-void load_shader()
+GLuint load_shader()
 {
+    GLuint program = 0;
     int success;
     char info_log[1024];
     const char* vert_code = read_shader("vert.glsl");
@@ -194,61 +262,8 @@ void load_shader()
 
     free((void*)vert_code);
     free((void*)frag_code);
-}
 
-typedef enum location_t {
-    POSITION_LOC = 0,
-    UV_LOC,
-    BLEND_IDX_LOC,
-    BLEND_WEIGHTS_LOC
-} Location;
-
-void init_gl_mesh(GlMesh* mesh, MD5Model* model)
-{
-    Vertex* verticesArr = NULL;
-    int* indices = NULL;
-    // TODO allow NULL for joints, if joints == NULL -> use model bind pose joints
-    prepare_model(&md5m, md5m.joints, &verticesArr, &indices, &mesh->numVerts, &mesh->numTris);
-    printf("init gl mesh v %d t %d\n", mesh->numVerts, mesh->numTris);
-    build_invbindpose(&md5m);
-
-    glGenVertexArrays(1, &mesh->vertex_array_obj);
-    glGenBuffers(1, &mesh->vertex_buffer_obj);
-    glGenBuffers(1, &mesh->element_buffer_obj);
-    glBindVertexArray(mesh->vertex_array_obj);
-
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer_obj);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * mesh->numVerts, &verticesArr[0], GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->element_buffer_obj);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * mesh->numTris * 3, &indices[0], GL_STATIC_DRAW);
-
-    // vertex position
-    glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-    glEnableVertexAttribArray(POSITION_LOC);
-
-    // texture coordinates
-    glVertexAttribPointer(UV_LOC, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-    glEnableVertexAttribArray(UV_LOC);
-
-    // bone idx
-    glVertexAttribPointer(BLEND_IDX_LOC, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, blend_idx));
-    glEnableVertexAttribArray(BLEND_IDX_LOC);
-
-    // bone idx
-    glVertexAttribPointer(BLEND_WEIGHTS_LOC, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, blend_weights));
-    glEnableVertexAttribArray(BLEND_WEIGHTS_LOC);
-
-    glBindVertexArray(0);
-
-    free(verticesArr);
-}
-
-void destroy_mesh(GlMesh* mesh)
-{
-    glDeleteVertexArrays(1, &mesh->vertex_array_obj);
-    glDeleteBuffers(1, &mesh->vertex_buffer_obj);
-    glDeleteBuffers(1, &mesh->element_buffer_obj);
+    return program;
 }
 
 void init()
@@ -266,11 +281,19 @@ void init()
 
     create_window();
 
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    {
+        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        glEnable(GL_CULL_FACE);
 
-    load_shader();
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
 
-    init_gl_mesh(&mesh, &md5m);
+    program = load_shader();
+
+    mesh.init(&md5m);
 
     // init model
     {
@@ -281,7 +304,7 @@ void init()
 
 void destroy()
 {
-    destroy_mesh(&mesh);
+    mesh.destroy();
 
     SDL_GL_DeleteContext(context);
     SDL_DestroyWindow(sdl_window);
@@ -291,7 +314,7 @@ void destroy()
 void render()
 {
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     glUseProgram(program);
@@ -301,7 +324,7 @@ void render()
 
         glm::mat4 p = glm::perspective(camera.zoom(), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 1000.0f);
         glm::mat4 v = camera.look_at();
-        glm::mat4 m = model_mat(&mymodel);
+        glm::mat4 m = mymodel.model_mat();
         mvp = p * v * m;
 
         GLuint mvp_loc = glGetUniformLocation(program, "mvp");

@@ -2,95 +2,85 @@
 
 #include <vector>
 
-#include <glm/glm.hpp>
+#include "common.h"
 
 #define MAX_BONES 100
 #define MAX_WEIGHTS 4
 
-enum {
-	X = 0, Y, Z, W
-};
-
-typedef float vec2[2];
-typedef float vec3[3];
-typedef float quat[4];
-
-typedef struct vertex_t {
-	vec3 position;
-	vec2 uv;
+struct SkinnedVertex : Vertex {
 	float blend_idx[MAX_WEIGHTS];
 	float blend_weights[MAX_WEIGHTS];
-} Vertex;
+};
 
-typedef struct md5_vertex_t {
+struct MD5Vertex {
 	vec2 st;
 	int startWeight;
 	int countWeight;
-} MD5Vertex;
+};
 
-typedef struct MD5_weight_t {
+struct MD5Weight {
 	int jointIndex;
 	float bias;
 	vec3 pos;
-} MD5Weight;
+};
 
-typedef struct md5_joint_t {
+struct MD5Joint {
 	int parent;
 	vec3 pos;
 	quat orient;
-} MD5Joint;
+};
 
-typedef struct md5_mesh_header_t {
+struct MD5MeshHeader {
 	int numVerts;
 	int numTris;
 	int numWeights;
-} MD5MeshHeader;
+};
 
-typedef struct md5_mesh_t {
+struct MD5Mesh {
 	MD5MeshHeader header;
 
 	MD5Vertex* vertices;
 	int* indices;
 	MD5Weight* weights;
-} MD5Mesh;
+};
 
-typedef struct md5_model_header_t {
+struct MD5ModelHeader {
 	int numJoints;
 	int numMeshes;
-} MD5ModelHeader;
+};
 
-typedef struct md5_model_t {
+struct MD5Model {
 	MD5ModelHeader header;
 
 	MD5Joint* joints;
 	MD5Mesh* meshes;
 
 	std::vector<glm::mat4x4> invBindPose;
-} MD5Model;
+};
 
-typedef struct md5_anim_header_t {
+struct MD5AnimHeader {
 	int numFrames;
 	int numJoints;
 	int frameRate;
-} MD5AnimHeader;
+};
 
-typedef struct md5_anim_t {
+struct MD5Anim {
 	MD5AnimHeader header;
 	MD5Joint** frameJoints; // frameJoints[numFrames][numJoints]
-} MD5Anim;
+};
 
-typedef struct md5_anim_info_t {
+struct MD5AnimInfo {
 	int currFrame;
 	int nextFrame;
 
 	double time;
 	double frameDuration;
-} MD5AnimInfo;
+};
 
 void read_md5model(const char* filename, MD5Model* model);
 void read_md5anim(const char* filename, MD5Anim* anim);
 
-void prepare_model(const MD5Model* model, const MD5Joint* joints, Vertex** vertices, int** indices, int*, int*);
+void prepare_model(const MD5Model* model, const MD5Joint* joints, SkinnedVertex** vertices, int** indices, int*, int*);
 
 void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt);
 
