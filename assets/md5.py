@@ -184,7 +184,7 @@ class MD5Triangle:
         self.vertIndices = vertIndices
 
     def pack(self):
-        return struct.pack('<iii', self.vertIndices[0], self.vertIndices[1], self.vertIndices[2])
+        return struct.pack('<iii', self.vertIndices[0], self.vertIndices[2], self.vertIndices[1])
 
     def __str__(self):
         return '{} {} {}'.format(
