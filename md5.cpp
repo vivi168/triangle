@@ -18,14 +18,11 @@ void MD5Model::read(const char* filename)
 	fp = fopen(filename, "rb");
 #endif
 
-	if (!fp)
-		exit(EXIT_FAILURE);
+	assert(fp);
 
 	fread(&header, sizeof(MD5ModelHeader), 1, fp);
 
 	assert(header.numJoints < MAX_BONES);
-
-	//printf("MD5 model\n%d, %d\n", header.numJoints, header.numMeshes);
 
 	joints = (MD5Joint*)malloc(sizeof(MD5Joint) * header.numJoints);
 
@@ -33,56 +30,31 @@ void MD5Model::read(const char* filename)
 
 	for (int i = 0; i < header.numJoints; i++) {
 		MD5Joint* j = &joints[i];
-
-		//printf("parent: %d (%f %f %f) (%f %f %f %f)\n",
-		//	j->parent,
-		//	j->pos[X], j->pos[Y], j->pos[Z],
-		//	j->orient[X], j->orient[Y], j->orient[Z], j->orient[W]
-		//);
 	}
 
-	// READ MESH
 	meshes = (MD5Mesh*)malloc(sizeof(MD5Mesh) * header.numMeshes);
+	assert(meshes);
 
 	for (int i = 0; i < header.numMeshes; i++) {
 		MD5Mesh* mesh = &meshes[i];
 
+		// Header
 		fread(&mesh->header, sizeof(MD5MeshHeader), 1, fp);
 
 		// Verts
 		mesh->vertices = (MD5Vertex*)malloc(sizeof(MD5Vertex) * mesh->header.numVerts);
+		assert(mesh->vertices);
 		fread(mesh->vertices, sizeof(MD5Vertex), mesh->header.numVerts, fp);
-
-		//for (int v = 0; v < mesh->header.numVerts; v++) {
-		//	printf("(%f %f) %d %d\n",
-		//		mesh->vertices[v].st[X], mesh->vertices[v].st[Y],
-		//		mesh->vertices[v].startWeight, mesh->vertices[v].countWeight
-		//		);
-		//}
 
 		// Tris
 		mesh->indices = (int*)malloc(sizeof(int) * mesh->header.numTris * 3);
+		assert(mesh->indices);
 		fread(mesh->indices, sizeof(int) * 3, mesh->header.numTris, fp);
-
-		//for (int t = 0; t < mesh->header.numTris; t++) {
-		//	printf("%d %d %d\n",
-		//		mesh->tris[t].vertIndices[0],
-		//		mesh->tris[t].vertIndices[1],
-		//		mesh->tris[t].vertIndices[2]
-		//	);
-		//}
 
 		// Weights
 		mesh->weights = (MD5Weight*)malloc(sizeof(MD5Weight) * mesh->header.numWeights);
+		assert(mesh->weights);
 		fread(mesh->weights, sizeof(MD5Weight), mesh->header.numWeights, fp);
-
-		//for (int w = 0; w < mesh->header.numWeights; w++) {
-		//	printf("%d %f (%f %f %f)\n",
-		//		mesh->weights[w].jointIndex,
-		//		mesh->weights[w].bias,
-		//		mesh->weights[w].pos[X], mesh->weights[w].pos[Y], mesh->weights[w].pos[Z]
-		//	);
-		//}
 	}
 }
 
@@ -95,27 +67,22 @@ void MD5Anim::read(const char* filename)
 	fp = fopen(filename, "rb");
 #endif
 
-	if (!fp)
-		exit(EXIT_FAILURE);
+	assert(fp);
 
 	fread(&header, sizeof(MD5AnimHeader), 1, fp);
 
 	printf("MD5 anim\n%d, %d, %d\n", header.numFrames, header.numJoints, header.frameRate);
 
 	frameJoints = (MD5Joint**)malloc(sizeof(MD5Joint*) * header.numFrames);
+	assert(frameJoints);
 
 	for (int i = 0; i < header.numFrames; i++) {
 		frameJoints[i] = (MD5Joint*)malloc(sizeof(MD5Joint) * header.numJoints);
+		assert(frameJoints[i]);
 		fread(frameJoints[i], sizeof(MD5Joint), header.numJoints, fp);
 
 		for (int k = 0; k < header.numJoints; k++) {
 			MD5Joint* j = &frameJoints[i][k];
-
-			//printf("parent: %d (%f %f %f) (%f %f %f %f)\n",
-			//	j->parent,
-			//	j->pos[X], j->pos[Y], j->pos[Z],
-			//	j->orient[X], j->orient[Y], j->orient[Z], j->orient[W]
-			//);
 		}
 	}
 }
@@ -211,6 +178,8 @@ void MD5Model::prepare(SkinnedVertex** vertices, int** indices, int* nv, int* nt
 
 	*vertices = (SkinnedVertex*)malloc(sizeof(SkinnedVertex) * numVerts);
 	*indices = (int*)malloc(sizeof(int) * numTris * 3);
+	assert(*vertices);
+	assert(*indices);
 
 	int vertOffset = 0;
 	int triOffset = 0;

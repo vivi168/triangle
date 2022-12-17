@@ -162,11 +162,7 @@ void create_window()
 
     sdl_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
             width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-
-    if (sdl_window == NULL) {
-        fprintf(stderr, "Error while create SDL_Window\n");
-        exit(EXIT_FAILURE);
-    }
+    assert(sdl_window != NULL);
 
     context = SDL_GL_CreateContext(sdl_window);
 
@@ -193,20 +189,14 @@ const char* read_shader(char const* filename)
     f = fopen(filename, "rb");
 #endif
 
-    if (!f) {
-        // TODO: error handling
-        exit(EXIT_FAILURE);
-    }
+    assert(f);
 
     fseek(f, 0, SEEK_END);
     len = ftell(f);
     fseek(f, 0, SEEK_SET);
     buffer = (char*)malloc(len + 1);
 
-    if (!buffer) {
-        // TODO: error handling
-        exit(EXIT_FAILURE);
-    }
+    assert(buffer);
 
     fread(buffer, 1, len, f);
     buffer[len] = '\0';
@@ -269,10 +259,7 @@ void init()
 {
     printf("Init\n");
 
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-        fprintf(stderr, "Unable to init SDL\n");
-        exit(EXIT_FAILURE);
-    }
+    assert(SDL_Init(SDL_INIT_EVERYTHING) == 0);
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
