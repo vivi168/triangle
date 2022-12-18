@@ -68,7 +68,7 @@ struct MD5AnimHeader {
 
 struct MD5Anim {
 	MD5AnimHeader header;
-	MD5Joint** frameJoints; // frameJoints[numFrames][numJoints]
+	std::vector<std::vector<MD5Joint>> frameJoints; // frameJoints[numFrames][numJoints]
 
 	void read(const char* filename);
 	std::vector<glm::mat4> bone_matrices(int frame);

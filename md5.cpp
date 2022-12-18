@@ -63,17 +63,11 @@ void MD5Anim::read(const char* filename)
 
 	printf("MD5 anim\n%d, %d, %d\n", header.numFrames, header.numJoints, header.frameRate);
 
-	frameJoints = (MD5Joint**)malloc(sizeof(MD5Joint*) * header.numFrames);
-	assert(frameJoints);
+	frameJoints.resize(header.numFrames);
 
 	for (int i = 0; i < header.numFrames; i++) {
-		frameJoints[i] = (MD5Joint*)malloc(sizeof(MD5Joint) * header.numJoints);
-		assert(frameJoints[i]);
-		fread(frameJoints[i], sizeof(MD5Joint), header.numJoints, fp);
-
-		for (int k = 0; k < header.numJoints; k++) {
-			MD5Joint* j = &frameJoints[i][k];
-		}
+		frameJoints[i].resize(header.numJoints);
+		fread(frameJoints[i].data(), sizeof(MD5Joint), header.numJoints, fp);
 	}
 }
 
@@ -208,11 +202,9 @@ std::vector<glm::mat4> MD5Model::inv_bindpose_matrices() const
 {
 	std::vector<glm::mat4> matrices;
 
-	for (int i = 0; i < header.numJoints; i++) {
-		const MD5Joint* joint = &joints[i];
-
-		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint->pos));
-		glm::mat4x4 rotMat = glm::toMat4(glm::make_quat(joint->orient));
+	for (const auto& joint : joints) {
+		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint.pos));
+		glm::mat4x4 rotMat = glm::toMat4(glm::make_quat(joint.orient));
 
 		glm::mat4x4 matrix = glm::inverse(transMat * rotMat);
 
@@ -226,16 +218,11 @@ std::vector<glm::mat4> MD5Anim::bone_matrices(int frame)
 {
 	std::vector<glm::mat4> matrices;
 
-	const int numJoints = header.numJoints;
 	// TODO interpolate between two frameJoints
-	const MD5Joint* joints = frameJoints[frame];
-
 	// TODO should ensure model and anim file are compatibles
-	for (int i = 0; i < numJoints; i++) {
-		const MD5Joint* joint = &joints[i];
-
-		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint->pos));
-		glm::mat4 rotMat = glm::toMat4(glm::make_quat(joint->orient));
+	for (const auto& joint : frameJoints[frame]) {
+		glm::mat4x4 transMat = glm::translate(glm::mat4(1.0f), glm::make_vec3(joint.pos));
+		glm::mat4 rotMat = glm::toMat4(glm::make_quat(joint.orient));
 
 		glm::mat4 matrix = transMat * rotMat;
 		matrices.push_back(matrix);
