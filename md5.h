@@ -39,9 +39,9 @@ struct MD5MeshHeader {
 struct MD5Mesh {
 	MD5MeshHeader header;
 
-	MD5Vertex* vertices;
-	int* indices;
-	MD5Weight* weights;
+	std::vector<MD5Vertex> vertices;
+	std::vector<int> indices;
+	std::vector<MD5Weight> weights;
 };
 
 struct MD5ModelHeader {
@@ -52,8 +52,8 @@ struct MD5ModelHeader {
 struct MD5Model {
 	MD5ModelHeader header;
 
-	MD5Joint* joints;
-	MD5Mesh* meshes;
+	std::vector<MD5Joint> joints;
+	std::vector<MD5Mesh> meshes;
 
 	void read(const char* filename);
 	void prepare(SkinnedVertex** vertices, int** indices, int* nv, int* nt) const;

@@ -24,37 +24,27 @@ void MD5Model::read(const char* filename)
 
 	assert(header.numJoints < MAX_BONES);
 
-	joints = (MD5Joint*)malloc(sizeof(MD5Joint) * header.numJoints);
+	joints.resize(header.numJoints);
 
-	fread(joints, sizeof(MD5Joint), header.numJoints, fp);
+	fread(joints.data(), sizeof(MD5Joint), header.numJoints, fp);
 
-	for (int i = 0; i < header.numJoints; i++) {
-		MD5Joint* j = &joints[i];
-	}
+	meshes.resize(header.numMeshes);
 
-	meshes = (MD5Mesh*)malloc(sizeof(MD5Mesh) * header.numMeshes);
-	assert(meshes);
-
-	for (int i = 0; i < header.numMeshes; i++) {
-		MD5Mesh* mesh = &meshes[i];
-
+	for (auto& mesh : meshes) {
 		// Header
-		fread(&mesh->header, sizeof(MD5MeshHeader), 1, fp);
+		fread(&mesh.header, sizeof(MD5MeshHeader), 1, fp);
 
 		// Verts
-		mesh->vertices = (MD5Vertex*)malloc(sizeof(MD5Vertex) * mesh->header.numVerts);
-		assert(mesh->vertices);
-		fread(mesh->vertices, sizeof(MD5Vertex), mesh->header.numVerts, fp);
+		mesh.vertices.resize(mesh.header.numVerts);
+		fread(mesh.vertices.data(), sizeof(MD5Vertex), mesh.header.numVerts, fp);
 
 		// Tris
-		mesh->indices = (int*)malloc(sizeof(int) * mesh->header.numTris * 3);
-		assert(mesh->indices);
-		fread(mesh->indices, sizeof(int) * 3, mesh->header.numTris, fp);
+		mesh.indices.resize(mesh.header.numTris * 3);
+		fread(mesh.indices.data(), sizeof(int) * 3, mesh.header.numTris, fp);
 
 		// Weights
-		mesh->weights = (MD5Weight*)malloc(sizeof(MD5Weight) * mesh->header.numWeights);
-		assert(mesh->weights);
-		fread(mesh->weights, sizeof(MD5Weight), mesh->header.numWeights, fp);
+		mesh.weights.resize(mesh.header.numWeights);
+		fread(mesh.weights.data(), sizeof(MD5Weight), mesh.header.numWeights, fp);
 	}
 }
 
@@ -135,34 +125,34 @@ void quat_rotate_point(const quat q, const vec3 in, vec3 out)
 	out[Z] = qout[Z];
 }
 
-void prepare_vertices(const MD5Mesh* mesh, const MD5Joint* joints, SkinnedVertex** vertices, const int offset)
+void prepare_vertices(const MD5Mesh& mesh, const std::vector<MD5Joint>& joints, SkinnedVertex** vertices, const int offset)
 {
-	for (int k = 0; k < mesh->header.numVerts; k++) {
-		MD5Vertex* v = &mesh->vertices[k];
+	for (int k = 0; k < mesh.header.numVerts; k++) {
+		const MD5Vertex& v = mesh.vertices[k];
 		vec3 finalPos = { 0, 0, 0 };
 
-		assert(v->countWeight <= MAX_WEIGHTS);
+		assert(v.countWeight <= MAX_WEIGHTS);
 
 		memset((*vertices)[k + offset].blend_idx, 0, sizeof(float) * MAX_WEIGHTS);
 		memset((*vertices)[k + offset].blend_weights, 0, sizeof(float) * MAX_WEIGHTS);
 
-		for (int i = 0; i < v->countWeight; i++) {
-			MD5Weight* w = &mesh->weights[v->startWeight + i];
-			const MD5Joint* joint = &joints[w->jointIndex];
+		for (int i = 0; i < v.countWeight; i++) {
+			const MD5Weight& w = mesh.weights[v.startWeight + i];
+			const MD5Joint& joint = joints[w.jointIndex];
 
 			vec3 wv;
-			quat_rotate_point(joint->orient, w->pos, wv);
+			quat_rotate_point(joint.orient, w.pos, wv);
 
-			finalPos[X] += (joint->pos[X] + wv[X]) * w->bias;
-			finalPos[Y] += (joint->pos[Y] + wv[Y]) * w->bias;
-			finalPos[Z] += (joint->pos[Z] + wv[Z]) * w->bias;
+			finalPos[X] += (joint.pos[X] + wv[X]) * w.bias;
+			finalPos[Y] += (joint.pos[Y] + wv[Y]) * w.bias;
+			finalPos[Z] += (joint.pos[Z] + wv[Z]) * w.bias;
 
-			(*vertices)[k + offset].blend_idx[i] = (float)w->jointIndex;
-			(*vertices)[k + offset].blend_weights[i] = w->bias;
+			(*vertices)[k + offset].blend_idx[i] = (float)w.jointIndex;
+			(*vertices)[k + offset].blend_weights[i] = w.bias;
 		}
 
 		memcpy((*vertices)[k + offset].position, finalPos, sizeof(vec3));
-		memcpy((*vertices)[k + offset].uv, v->st, sizeof(vec2));
+		memcpy((*vertices)[k + offset].uv, v.st, sizeof(vec2));
 	}
 }
 
@@ -184,7 +174,7 @@ void MD5Model::prepare(SkinnedVertex** vertices, int** indices, int* nv, int* nt
 	int vertOffset = 0;
 	int triOffset = 0;
 	for (int i = 0; i < header.numMeshes; i++) {
-		prepare_vertices(&meshes[i], joints, vertices, vertOffset);
+		prepare_vertices(meshes[i], joints, vertices, vertOffset);
 
 		for (int t = 0; t < meshes[i].header.numTris * 3; t++) {
 			(*indices)[triOffset + t] = meshes[i].indices[t] + vertOffset;
