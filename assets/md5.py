@@ -218,11 +218,12 @@ class MD5Mesh:
         self.weights = []
 
     def pack(self):
-        headerData = struct.pack('<iii', self.numVerts, self.numTris, self.numWeights)
+        headerData = struct.pack('<iiii', self.numVerts, self.numTris, self.numWeights, len(self.shader))
+        print(self.shader, len(self.shader))
 
         vertsData = bytearray()
         trisData = bytearray()
-        weightsData =bytearray()
+        weightsData = bytearray()
 
         for v in self.verts:
             vertsData += v.pack()
@@ -231,7 +232,7 @@ class MD5Mesh:
         for w in self.weights:
             weightsData += w.pack()
 
-        return headerData + vertsData + trisData + weightsData
+        return headerData + vertsData + trisData + weightsData + bytes(self.shader, 'ascii')
 
 class MD5Model:
     def __init__(self):
@@ -277,7 +278,9 @@ class MD5Model:
 
                         if meshLine.startswith('shader'):
                             # TODO save shader information (use it as texture filename)
-                            self.shader = 'TODO'
+                            data = parse.search('shader "{shader:S}"', meshLine)
+                            mesh.shader = data['shader']
+
 
                         # vertices
                         elif meshLine.startswith('numverts'):

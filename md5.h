@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include <string>
 
 #include "common.h"
 
@@ -38,6 +38,7 @@ struct MD5MeshHeader {
 	int numVerts;
 	int numTris;
 	int numWeights;
+	int shaderSize;
 };
 
 struct MD5Mesh {
@@ -46,6 +47,7 @@ struct MD5Mesh {
 	std::vector<MD5Vertex> vertices;
 	std::vector<int> indices;
 	std::vector<MD5Weight> weights;
+	std::string shader;
 };
 
 struct MD5ModelHeader {

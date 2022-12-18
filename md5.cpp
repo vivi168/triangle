@@ -1,4 +1,4 @@
-#include <cstdio>
+#include <iostream>
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
@@ -45,6 +45,12 @@ void MD5Model::read(const char* filename)
 		// Weights
 		mesh.weights.resize(mesh.header.numWeights);
 		fread(mesh.weights.data(), sizeof(MD5Weight), mesh.header.numWeights, fp);
+
+		// Texture name
+		mesh.shader.resize(mesh.header.shaderSize);
+		fread(mesh.shader.data(), sizeof(char), mesh.header.shaderSize, fp);
+		
+		std::cout << mesh.shader << " " << mesh.header.shaderSize << "\n";
 	}
 }
 
@@ -60,8 +66,6 @@ void MD5Anim::read(const char* filename)
 	assert(fp);
 
 	fread(&header, sizeof(MD5AnimHeader), 1, fp);
-
-	printf("MD5 anim\n%d, %d, %d\n", header.numFrames, header.numJoints, header.frameRate);
 
 	frameJoints.resize(header.numFrames);
 
