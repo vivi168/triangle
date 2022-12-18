@@ -180,22 +180,6 @@ SkinnedMesh MD5Model::prepare() const
 	return skinned_mesh;
 }
 
-void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt)
-{
-	int maxFrames = anim->header.numFrames - 1;
-
-	animInfo->time += dt;
-
-	if (animInfo->time >= animInfo->frameDuration) {
-		animInfo->currFrame++;
-		animInfo->nextFrame++;
-		animInfo->time = 0.0;
-
-		if (animInfo->currFrame > maxFrames) animInfo->currFrame = 0;
-		if (animInfo->nextFrame > maxFrames) animInfo->nextFrame = 0;
-	}
-}
-
 std::vector<glm::mat4> MD5Model::inv_bindpose_matrices() const
 {
 	std::vector<glm::mat4> matrices;
@@ -227,4 +211,20 @@ std::vector<glm::mat4> MD5Anim::bone_matrices(int frame)
 	}
 
 	return matrices;
+}
+
+void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt)
+{
+	int maxFrames = anim->header.numFrames - 1;
+
+	animInfo->time += dt;
+
+	if (animInfo->time >= animInfo->frameDuration) {
+		animInfo->currFrame++;
+		animInfo->nextFrame++;
+		animInfo->time = 0.0;
+
+		if (animInfo->currFrame > maxFrames) animInfo->currFrame = 0;
+		if (animInfo->nextFrame > maxFrames) animInfo->nextFrame = 0;
+	}
 }
