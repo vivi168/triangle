@@ -12,6 +12,10 @@ struct SkinnedVertex : Vertex {
 	float blend_weights[MAX_WEIGHTS];
 };
 
+struct SkinnedMesh : BaseMesh {
+	std::vector<SkinnedVertex> vertices;
+};
+
 struct MD5Vertex {
 	vec2 st;
 	int startWeight;
@@ -56,7 +60,7 @@ struct MD5Model {
 	std::vector<MD5Mesh> meshes;
 
 	void read(const char* filename);
-	void prepare(SkinnedVertex** vertices, int** indices, int* nv, int* nt) const;
+	SkinnedMesh prepare() const;
 	std::vector<glm::mat4> inv_bindpose_matrices() const;
 };
 

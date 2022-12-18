@@ -119,7 +119,7 @@ void quat_rotate_point(const quat q, const vec3 in, vec3 out)
 	out[Z] = qout[Z];
 }
 
-void prepare_vertices(const MD5Mesh& mesh, const std::vector<MD5Joint>& joints, SkinnedVertex** vertices, const int offset)
+void prepare_vertices(const MD5Mesh& mesh, const std::vector<MD5Joint>& joints, std::vector<SkinnedVertex>& vertices, const int offset)
 {
 	for (int k = 0; k < mesh.header.numVerts; k++) {
 		const MD5Vertex& v = mesh.vertices[k];
@@ -127,8 +127,8 @@ void prepare_vertices(const MD5Mesh& mesh, const std::vector<MD5Joint>& joints, 
 
 		assert(v.countWeight <= MAX_WEIGHTS);
 
-		memset((*vertices)[k + offset].blend_idx, 0, sizeof(float) * MAX_WEIGHTS);
-		memset((*vertices)[k + offset].blend_weights, 0, sizeof(float) * MAX_WEIGHTS);
+		memset(vertices[k + offset].blend_idx, 0, sizeof(float) * MAX_WEIGHTS);
+		memset(vertices[k + offset].blend_weights, 0, sizeof(float) * MAX_WEIGHTS);
 
 		for (int i = 0; i < v.countWeight; i++) {
 			const MD5Weight& w = mesh.weights[v.startWeight + i];
@@ -141,18 +141,19 @@ void prepare_vertices(const MD5Mesh& mesh, const std::vector<MD5Joint>& joints, 
 			finalPos[Y] += (joint.pos[Y] + wv[Y]) * w.bias;
 			finalPos[Z] += (joint.pos[Z] + wv[Z]) * w.bias;
 
-			(*vertices)[k + offset].blend_idx[i] = (float)w.jointIndex;
-			(*vertices)[k + offset].blend_weights[i] = w.bias;
+			vertices[k + offset].blend_idx[i] = (float)w.jointIndex;
+			vertices[k + offset].blend_weights[i] = w.bias;
 		}
 
-		memcpy((*vertices)[k + offset].position, finalPos, sizeof(vec3));
-		memcpy((*vertices)[k + offset].uv, v.st, sizeof(vec2));
+		memcpy(vertices[k + offset].position, finalPos, sizeof(vec3));
+		memcpy(vertices[k + offset].uv, v.st, sizeof(vec2));
 	}
 }
 
-// TODO: pass joint array to use instead of bind pose
-void MD5Model::prepare(SkinnedVertex** vertices, int** indices, int* nv, int* nt) const
+SkinnedMesh MD5Model::prepare() const
 {
+	SkinnedMesh skinned_mesh;
+
 	int numVerts = 0;
 	int numTris = 0;
 	for (int i = 0; i < header.numMeshes; i++) {
@@ -160,26 +161,23 @@ void MD5Model::prepare(SkinnedVertex** vertices, int** indices, int* nv, int* nt
 		numTris += meshes[i].header.numTris;
 	}
 
-	*vertices = (SkinnedVertex*)malloc(sizeof(SkinnedVertex) * numVerts);
-	*indices = (int*)malloc(sizeof(int) * numTris * 3);
-	assert(*vertices);
-	assert(*indices);
+	skinned_mesh.vertices.resize(numVerts);
+	skinned_mesh.indices.resize(numTris * 3);
 
 	int vertOffset = 0;
 	int triOffset = 0;
 	for (int i = 0; i < header.numMeshes; i++) {
-		prepare_vertices(meshes[i], joints, vertices, vertOffset);
+		prepare_vertices(meshes[i], joints, skinned_mesh.vertices, vertOffset);
 
 		for (int t = 0; t < meshes[i].header.numTris * 3; t++) {
-			(*indices)[triOffset + t] = meshes[i].indices[t] + vertOffset;
+			skinned_mesh.indices[triOffset + t] = meshes[i].indices[t] + vertOffset;
 		}
 
 		vertOffset += meshes[i].header.numVerts;
 		triOffset += meshes[i].header.numTris * 3;
 	}
 
-	*nv = numVerts;
-	*nt = numTris;
+	return skinned_mesh;
 }
 
 void animate(const MD5Anim* anim, MD5AnimInfo* animInfo, float dt)

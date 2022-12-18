@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <glm/glm.hpp>
 
 enum {
@@ -16,3 +17,15 @@ struct Vertex {
 	vec2 uv;
 };
 
+struct Subset {
+	int start, count;
+};
+
+struct BaseMesh {
+	std::vector<int> indices;
+	std::vector<Subset> subsets;
+};
+
+struct Mesh : BaseMesh {
+	std::vector<Vertex> vertices;
+};

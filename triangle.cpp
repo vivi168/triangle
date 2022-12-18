@@ -44,10 +44,11 @@ struct GlMesh {
 
     void init(const MD5Model* model)
     {
-        SkinnedVertex* verticesArr = NULL;
-        int* indices = NULL;
         // TODO allow NULL for joints, if joints == NULL -> use model bind pose joints
-        model->prepare(&verticesArr, &indices, &numVerts, &numTris); // TODO method on m5model
+        SkinnedMesh mesh3d = model->prepare();
+        numVerts = mesh3d.vertices.size();
+        numTris = mesh3d.indices.size();
+
         printf("init gl mesh v %d t %d\n", numVerts, numTris);
 
         glGenVertexArrays(1, &vertex_array_obj);
@@ -55,11 +56,11 @@ struct GlMesh {
 
         glGenBuffers(1, &vertex_buffer_obj);
         glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_obj);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(SkinnedVertex) * numVerts, &verticesArr[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(SkinnedVertex) * numVerts, mesh3d.vertices.data(), GL_STATIC_DRAW);
 
         glGenBuffers(1, &element_buffer_obj);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer_obj);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * numTris * 3, &indices[0], GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * numTris * 3, mesh3d.indices.data(), GL_STATIC_DRAW);
 
         // vertex position
         glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)0);
@@ -78,8 +79,6 @@ struct GlMesh {
         glEnableVertexAttribArray(BLEND_WEIGHTS_LOC);
 
         glBindVertexArray(0);
-
-        free(verticesArr);
 
         animated = true;
     }
