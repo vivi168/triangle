@@ -23,7 +23,6 @@ struct Subset {
 
 struct BaseMesh {
 	std::vector<int> indices;
-	std::vector<Subset> subsets;
 };
 
 struct Mesh : BaseMesh {

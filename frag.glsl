@@ -1,14 +1,19 @@
 #version 330 core
 
 in VertexData {
-    vec4 color;
+    vec2 texture_uv;
 } i;
+
+uniform sampler2D texture_sampler;
 
 out vec4 out_color;
 
 void main()
 {
-    // out_color = vec4(1.0f, 0.0f, 1.0f, 1);
+    vec4 color = texture(texture_sampler, i.texture_uv);
 
-    out_color = i.color;
+    if (color.a < 0.1)
+        discard;
+
+    out_color = color;
 }

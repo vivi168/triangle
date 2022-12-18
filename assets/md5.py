@@ -496,10 +496,10 @@ class MD5Anim:
 
 if __name__ == '__main__':
     model = MD5Model()
-    model.from_file('cubeguy.md5mesh')
+    model.from_file('Bob.md5mesh')
     model.export()
 
     anim = MD5Anim()
-    anim.from_file('running.md5anim')
+    anim.from_file('Bob.md5anim')
     anim.export()
 

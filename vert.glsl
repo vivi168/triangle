@@ -8,7 +8,7 @@ layout (location = 2) in vec4 in_blend_idx;
 layout (location = 3) in vec4 in_blend_weights;
 
 out VertexData {
-    vec4 color;
+    vec2 texture_uv;
 } o;
 
 uniform mat4 mvp;
@@ -28,5 +28,5 @@ void main()
 
     gl_Position =  mvp * position;
 
-    o.color = vec4(1.0f, 0.0f, 1.0f, 1.0f);
+    o.texture_uv = in_uv;
 }

@@ -1,5 +1,6 @@
+#include <iostream>
+
 #include <cstdlib>
-#include <cstdio>
 #include <cstdint>
 #include <cmath>
 
@@ -9,6 +10,9 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <GL/gl3w.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #ifdef _WIN32
 #include <SDL.h>
@@ -35,10 +39,13 @@ enum Location {
 };
 
 struct GlMesh {
-    int numIndices, numVerts, numSubsets;
+    int numIndices, numVerts;
     GLuint vertex_buffer_obj, element_buffer_obj;
     GLuint vertex_array_obj;
     GLuint program;
+
+    std::vector<Subset> subsets;
+    std::vector<GLuint> textures; // TODO : allow for multiple textures (normal map, etc)
 
     bool animated;
 
@@ -48,6 +55,44 @@ struct GlMesh {
         SkinnedMesh mesh3d = model->prepare();
         numVerts = mesh3d.vertices.size();
         numIndices = mesh3d.indices.size();
+
+        textures.resize(model->meshes.size());
+        glGenTextures(model->meshes.size(), textures.data());
+
+        subsets.resize(model->meshes.size());
+
+        int i = 0, start = 0;
+        for (const auto& mesh : model->meshes) {
+            int width, height, channels, mode;
+            std::string filepath = "assets/" + mesh.shader + ".png"; // HERE: handle multiple textures, with suffix
+            unsigned char* img_data = stbi_load(filepath.c_str(), &width, &height, &channels, 0);
+
+            assert(img_data);
+
+            mode = channels == 4 ? GL_RGBA : GL_RGB;
+
+            glBindTexture(GL_TEXTURE_2D, textures[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, mode, width, height, 0, mode, GL_UNSIGNED_BYTE, img_data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            std::cout << filepath  << " " << width << " " << height << " " << textures[i] << "\n";
+
+            subsets[i].start = start;
+            subsets[i].count = mesh.indices.size();
+
+            std::cout << subsets[i].start << " " << subsets[i].count << "\n";
+
+            start += mesh.indices.size();
+
+            stbi_image_free(img_data);
+
+            i++;
+        }
 
         printf("init gl mesh v %d i %d\n", numVerts, numIndices);
 
@@ -85,6 +130,8 @@ struct GlMesh {
 
     void destroy()
     {
+        glDeleteTextures(textures.size(), textures.data());
+
         glDeleteVertexArrays(1, &vertex_array_obj);
         glDeleteBuffers(1, &vertex_buffer_obj);
         glDeleteBuffers(1, &element_buffer_obj);
@@ -270,7 +317,7 @@ void init()
         glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
-        glEnable(GL_CULL_FACE);
+        glEnable(GL_CULL_FACE); // enable per subset ?
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -300,7 +347,7 @@ void render()
 {
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     glUseProgram(program);
     
@@ -335,7 +382,16 @@ void render()
     }
 
     glBindVertexArray(mesh.vertex_array_obj);
-    glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_INT, (void*)0);
+
+
+    int i = 0;
+    for (const auto& subset : mesh.subsets) {
+        glActiveTexture(GL_TEXTURE0);
+        glUniform1i(glGetUniformLocation(mesh.program, "texture_sampler"), 0);
+        glBindTexture(GL_TEXTURE_2D, mesh.textures[i++]);
+
+        glDrawElements(GL_TRIANGLES, subset.count, GL_UNSIGNED_INT, (void*)(sizeof(int) * subset.start));
+    }
 
     SDL_GL_SwapWindow(sdl_window);
 }
