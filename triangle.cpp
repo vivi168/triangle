@@ -35,7 +35,7 @@ enum Location {
 };
 
 struct GlMesh {
-    int numTris, numVerts, numSubsets;
+    int numIndices, numVerts, numSubsets;
     GLuint vertex_buffer_obj, element_buffer_obj;
     GLuint vertex_array_obj;
     GLuint program;
@@ -47,9 +47,9 @@ struct GlMesh {
         // TODO allow NULL for joints, if joints == NULL -> use model bind pose joints
         SkinnedMesh mesh3d = model->prepare();
         numVerts = mesh3d.vertices.size();
-        numTris = mesh3d.indices.size();
+        numIndices = mesh3d.indices.size();
 
-        printf("init gl mesh v %d t %d\n", numVerts, numTris);
+        printf("init gl mesh v %d i %d\n", numVerts, numIndices);
 
         glGenVertexArrays(1, &vertex_array_obj);
         glBindVertexArray(vertex_array_obj);
@@ -60,7 +60,7 @@ struct GlMesh {
 
         glGenBuffers(1, &element_buffer_obj);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer_obj);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * numTris * 3, mesh3d.indices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * numIndices, mesh3d.indices.data(), GL_STATIC_DRAW);
 
         // vertex position
         glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)0);
@@ -335,7 +335,7 @@ void render()
     }
 
     glBindVertexArray(mesh.vertex_array_obj);
-    glDrawElements(GL_TRIANGLES, mesh.numTris * 3, GL_UNSIGNED_INT, (void*)0);
+    glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_INT, (void*)0);
 
     SDL_GL_SwapWindow(sdl_window);
 }
