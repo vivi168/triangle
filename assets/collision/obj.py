@@ -1,3 +1,4 @@
+# export with Y up, -Z forward
 import numpy as np
 import parse
 import struct
@@ -25,7 +26,7 @@ class Vec3:
         self.z = z
 
     def pack(self):
-        return struct.pack('<fff', self.x, self.z, -self.y)
+        return struct.pack('<fff', self.x, self.y, self.z)
 
     def __str__(self):
         return '{:.6f} {:.6f} {:.6f}'.format(self.x, self.y, self.z)

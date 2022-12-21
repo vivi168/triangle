@@ -2,8 +2,6 @@
 
 #include "common.h"
 
-struct ObjModel {
-	std::vector<Vertex> vertices;
-	std::vector<int> indices;
-	std::vector<Subset> subsets;
+namespace Obj {
+	Mesh prepare(const char* filename);
 };

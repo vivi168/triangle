@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unordered_map>
 
 #include <cstdlib>
 #include <cstdint>
@@ -23,13 +24,15 @@
 #include "input_manager.h"
 #include "camera.h"
 #include "md5.h"
+#include "obj.h"
 
 #define FPS 60
 #define TICKS_PER_FRAME (1000 / FPS)
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 
-GLuint load_shader();
+std::unordered_map<std::string, GLuint> loaded_shaders;
+GLuint load_shader(std::string);
 
 enum Location {
     POSITION_LOC = 0,
@@ -56,13 +59,17 @@ struct GlMesh {
         numIndices = mesh3d.indices.size();
         subsets = mesh3d.subsets;
 
+        program = loaded_shaders["skinned"];
+
         textures.resize(model->meshes.size());
         glGenTextures(model->meshes.size(), textures.data());
 
         int i = 0, start = 0;
         for (const auto& mesh : model->meshes) {
             int width, height, channels, mode;
+            // TODO : add mesh->shader information to subsets ?
             std::string filepath = "assets/" + mesh.shader + ".png"; // HERE: handle multiple textures, with suffix
+                                                                     // EG: texture_albedo.png, texture_normal.png etc
             unsigned char* img_data = stbi_load(filepath.c_str(), &width, &height, &channels, 0);
 
             assert(img_data);
@@ -120,9 +127,44 @@ struct GlMesh {
         animated = true;
     }
 
+    void init(std::string filename)
+    {
+        Mesh mesh3d = Obj::prepare(filename.c_str());
+
+        numVerts = mesh3d.vertices.size();
+        numIndices = mesh3d.indices.size();
+        subsets = mesh3d.subsets;
+
+        printf("init gl mesh v %d i %d\n", numVerts, numIndices);
+
+        glGenVertexArrays(1, &vertex_array_obj);
+        glBindVertexArray(vertex_array_obj);
+
+        glGenBuffers(1, &vertex_buffer_obj);
+        glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_obj);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * numVerts, mesh3d.vertices.data(), GL_STATIC_DRAW);
+
+        glGenBuffers(1, &element_buffer_obj);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer_obj);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * numIndices, mesh3d.indices.data(), GL_STATIC_DRAW);
+
+        // vertex position
+        glVertexAttribPointer(POSITION_LOC, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+        glEnableVertexAttribArray(POSITION_LOC);
+
+        // texture coordinates
+        glVertexAttribPointer(UV_LOC, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+        glEnableVertexAttribArray(UV_LOC);
+
+        glBindVertexArray(0);
+
+        animated = false;
+    }
+
     void destroy()
     {
-        glDeleteTextures(textures.size(), textures.data());
+        if (!textures.empty())
+            glDeleteTextures(textures.size(), textures.data());
 
         glDeleteVertexArrays(1, &vertex_array_obj);
         glDeleteBuffers(1, &vertex_buffer_obj);
@@ -153,7 +195,6 @@ struct Model {
 SDL_Window* sdl_window;
 SDL_GLContext context;
 SDL_Event event;
-GLuint program = 0;
 
 Uint32 last_time;
 Uint32 current_time;
@@ -243,13 +284,17 @@ const char* read_shader(char const* filename)
     return buffer;
 }
 
-GLuint load_shader()
+GLuint load_shader(std::string name)
 {
     GLuint program = 0;
     int success;
     char info_log[1024];
-    const char* vert_code = read_shader("vert.glsl");
-    const char* frag_code = read_shader("frag.glsl");
+
+    std::string vert_filename = name + ".vert";
+    std::string frag_filename = name + ".frag";
+
+    const char* vert_code = read_shader(vert_filename.c_str());
+    const char* frag_code = read_shader(frag_filename.c_str());
 
     GLuint vert_shader, frag_shader;
 
@@ -315,7 +360,7 @@ void init()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 
-    program = load_shader();
+    loaded_shaders["skinned"] = load_shader("skinned");
 
     mesh.init(&md5m);
 
@@ -341,7 +386,7 @@ void render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    glUseProgram(program);
+    glUseProgram(mesh.program);
     
     {
         glm::mat4 mvp;
@@ -351,7 +396,7 @@ void render()
         glm::mat4 m = mymodel.model_mat();
         mvp = p * v * m;
 
-        GLuint mvp_loc = glGetUniformLocation(program, "mvp");
+        GLuint mvp_loc = glGetUniformLocation(mesh.program, "mvp");
         glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
     }
 
@@ -367,7 +412,7 @@ void render()
 #else
             sprintf(loc, "bones[%d]", i);
 #endif
-            GLuint bones_loc = glGetUniformLocation(program, loc);
+            GLuint bones_loc = glGetUniformLocation(mesh.program, loc);
             glm::mat4 final_bones = bones[i] * inv[i];
             glUniformMatrix4fv(bones_loc, 1, GL_FALSE, glm::value_ptr(final_bones));
         }
@@ -456,6 +501,8 @@ int main(int argc, char **argv)
 {
     md5m.read("assets/md5model.bin");
     md5a.read("assets/md5anim.bin");
+
+    Obj::prepare("assets/collision/cube.bin");
     
     {
         // TODO -> have anim info as part of anim ?

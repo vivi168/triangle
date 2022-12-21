@@ -19,4 +19,14 @@ struct Vertex {
 
 struct Subset {
 	int start, count;
+	// TODO: should contain texture/shader information ?
+};
+
+struct BaseMesh {
+	std::vector<int> indices;
+	std::vector<Subset> subsets;
+};
+
+struct Mesh : BaseMesh {
+	std::vector<Vertex> vertices;
 };
