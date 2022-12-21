@@ -12,8 +12,10 @@ struct SkinnedVertex : Vertex {
 	float blend_weights[MAX_WEIGHTS];
 };
 
-struct SkinnedMesh : BaseMesh {
+struct SkinnedMesh {
 	std::vector<SkinnedVertex> vertices;
+	std::vector<int> indices;
+	std::vector<Subset> subsets;
 };
 
 struct MD5Vertex {

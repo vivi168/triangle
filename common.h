@@ -20,11 +20,3 @@ struct Vertex {
 struct Subset {
 	int start, count;
 };
-
-struct BaseMesh {
-	std::vector<int> indices;
-};
-
-struct Mesh : BaseMesh {
-	std::vector<Vertex> vertices;
-};

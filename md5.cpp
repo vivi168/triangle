@@ -160,9 +160,17 @@ SkinnedMesh MD5Model::prepare() const
 
 	int numVerts = 0;
 	int numTris = 0;
+
+	skinned_mesh.subsets.resize(header.numMeshes);
+
+	int start = 0;
 	for (int i = 0; i < header.numMeshes; i++) {
 		numVerts += meshes[i].header.numVerts;
 		numTris += meshes[i].header.numTris;
+
+		skinned_mesh.subsets[i].start = start;
+		skinned_mesh.subsets[i].count = meshes[i].header.numTris * 3;
+		start += meshes[i].header.numTris * 3;
 	}
 
 	skinned_mesh.vertices.resize(numVerts);

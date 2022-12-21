@@ -51,15 +51,13 @@ struct GlMesh {
 
     void init(const MD5Model* model)
     {
-        // TODO allow NULL for joints, if joints == NULL -> use model bind pose joints
         SkinnedMesh mesh3d = model->prepare();
         numVerts = mesh3d.vertices.size();
         numIndices = mesh3d.indices.size();
+        subsets = mesh3d.subsets;
 
         textures.resize(model->meshes.size());
         glGenTextures(model->meshes.size(), textures.data());
-
-        subsets.resize(model->meshes.size());
 
         int i = 0, start = 0;
         for (const auto& mesh : model->meshes) {
@@ -81,13 +79,7 @@ struct GlMesh {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
             std::cout << filepath  << " " << width << " " << height << " " << textures[i] << "\n";
-
-            subsets[i].start = start;
-            subsets[i].count = mesh.indices.size();
-
             std::cout << subsets[i].start << " " << subsets[i].count << "\n";
-
-            start += mesh.indices.size();
 
             stbi_image_free(img_data);
 
