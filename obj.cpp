@@ -25,8 +25,6 @@ Mesh Obj::prepare(const char* filename)
 
 	fread(&header, sizeof(ObjHeader), 1, fp);
 
-	// std::cout << "HEADER " << header.numVerts << " " << header.numTris << " " << header.numSubsets << "\n";
-
 	// Verts
 	mesh.vertices.resize(header.numVerts);
 	fread(mesh.vertices.data(), sizeof(Vertex), header.numVerts, fp);
@@ -37,26 +35,15 @@ Mesh Obj::prepare(const char* filename)
 
 	// Subsets
 	mesh.subsets.resize(header.numSubsets);
-	fread(mesh.subsets.data(), sizeof(Subset), header.numVerts, fp);
 
-	//for (auto v : mesh.vertices) {
-	//	std::cout <<
-	//		"(" << v.position[X] << " " << v.position[Y] << " " << v.position[Z] << ") " <<
-	//		"(" << v.normal[X] << " " << v.normal[Y] << " " << v.normal[Z] << ") " <<
-	//		"(" << v.uv[X] << " " << v.uv[Y] << ")\n";
-	//}
+	for (int i = 0; i < header.numSubsets; i++) {
+		fread(&mesh.subsets[i].header, sizeof(SubsetHeader), 1, fp);
 
-	//int i = 0;
-	//for (auto t : mesh.indices) {
-	//	std::cout << t << " ";
-	//	i++;
-	//	if (i % 3 == 0) std::cout << "\n";
-	//}
+		mesh.subsets[i].name.resize(mesh.subsets[i].getNameSize());
+		fread(mesh.subsets[i].name.data(), sizeof(char), mesh.subsets[i].getNameSize(), fp);
 
-	//for (auto t : mesh.subsets) {
-
-	//	std::cout << t.start << " " << t.count << "\n";
-	//}
+		std::cout << mesh.subsets[i].name << " " << mesh.subsets[i].getNameSize() << "\n";
+	}
 
 	return mesh;
 }

@@ -42,7 +42,6 @@ enum Location {
 };
 
 struct GlMesh {
-    int numIndices, numVerts;
     GLuint vertex_buffer_obj, element_buffer_obj;
     GLuint vertex_array_obj;
     GLuint program;
@@ -52,23 +51,21 @@ struct GlMesh {
 
     bool animated;
 
-    void init(const MD5Model* model)
+    void init(const SkinnedMesh& mesh3d)
     {
-        SkinnedMesh mesh3d = model->prepare();
-        numVerts = mesh3d.vertices.size();
-        numIndices = mesh3d.indices.size();
+        int numVerts = mesh3d.vertices.size();
+        int numIndices = mesh3d.indices.size();
         subsets = mesh3d.subsets;
 
         program = loaded_shaders["skinned"];
 
-        textures.resize(model->meshes.size());
-        glGenTextures(model->meshes.size(), textures.data());
+        textures.resize(subsets.size());
+        glGenTextures(subsets.size(), textures.data());
 
-        int i = 0, start = 0;
-        for (const auto& mesh : model->meshes) {
+        int i = 0;
+        for (const auto& subset : subsets) {
             int width, height, channels, mode;
-            // TODO : add mesh->shader information to subsets ?
-            std::string filepath = "assets/" + mesh.shader + ".png"; // HERE: handle multiple textures, with suffix
+            std::string filepath = "assets/" + subset.name + ".png"; // HERE: handle multiple textures, with suffix
                                                                      // EG: texture_albedo.png, texture_normal.png etc
             unsigned char* img_data = stbi_load(filepath.c_str(), &width, &height, &channels, 0);
 
@@ -86,14 +83,14 @@ struct GlMesh {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
             std::cout << filepath  << " " << width << " " << height << " " << textures[i] << "\n";
-            std::cout << subsets[i].start << " " << subsets[i].count << "\n";
+            std::cout << subset.header.start << " " << subset.header.count << "\n";
 
             stbi_image_free(img_data);
 
             i++;
         }
 
-        printf("init gl mesh v %d i %d\n", numVerts, numIndices);
+        printf("init skinned gl mesh v %d i %d\n", numVerts, numIndices);
 
         glGenVertexArrays(1, &vertex_array_obj);
         glBindVertexArray(vertex_array_obj);
@@ -131,11 +128,11 @@ struct GlMesh {
     {
         Mesh mesh3d = Obj::prepare(filename.c_str());
 
-        numVerts = mesh3d.vertices.size();
-        numIndices = mesh3d.indices.size();
+        int numVerts = mesh3d.vertices.size();
+        int numIndices = mesh3d.indices.size();
         subsets = mesh3d.subsets;
 
-        printf("init gl mesh v %d i %d\n", numVerts, numIndices);
+        printf("init static gl mesh v %d i %d\n", numVerts, numIndices);
 
         glGenVertexArrays(1, &vertex_array_obj);
         glBindVertexArray(vertex_array_obj);
@@ -170,7 +167,6 @@ struct GlMesh {
         glDeleteBuffers(1, &vertex_buffer_obj);
         glDeleteBuffers(1, &element_buffer_obj);
     }
-
 };
 
 struct Model {
@@ -362,7 +358,8 @@ void init()
 
     loaded_shaders["skinned"] = load_shader("skinned");
 
-    mesh.init(&md5m);
+    SkinnedMesh mesh3d = md5m.prepare();
+    mesh.init(mesh3d);
 
     // init model
     {
@@ -420,14 +417,13 @@ void render()
 
     glBindVertexArray(mesh.vertex_array_obj);
 
-
     int i = 0;
     for (const auto& subset : mesh.subsets) {
         glActiveTexture(GL_TEXTURE0);
         glUniform1i(glGetUniformLocation(mesh.program, "texture_sampler"), 0);
         glBindTexture(GL_TEXTURE_2D, mesh.textures[i++]);
 
-        glDrawElements(GL_TRIANGLES, subset.count, GL_UNSIGNED_INT, (void*)(sizeof(int) * subset.start));
+        glDrawElements(GL_TRIANGLES, subset.header.count, GL_UNSIGNED_INT, (void*)(sizeof(int) * subset.header.start));
     }
 
     SDL_GL_SwapWindow(sdl_window);

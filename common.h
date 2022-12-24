@@ -17,9 +17,18 @@ struct Vertex {
 	vec2 uv;
 };
 
+struct SubsetHeader {
+	int start, count, nameSize;
+};
+
 struct Subset {
-	int start, count;
-	// TODO: should contain texture/shader information ?
+	SubsetHeader header;
+	std::string name;
+
+	int getNameSize()
+	{
+		return header.nameSize;
+	}
 };
 
 struct BaseMesh {

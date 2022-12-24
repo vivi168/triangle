@@ -168,8 +168,9 @@ SkinnedMesh MD5Model::prepare() const
 		numVerts += meshes[i].header.numVerts;
 		numTris += meshes[i].header.numTris;
 
-		skinned_mesh.subsets[i].start = start;
-		skinned_mesh.subsets[i].count = meshes[i].header.numTris * 3;
+		skinned_mesh.subsets[i].header.start = start;
+		skinned_mesh.subsets[i].header.count = meshes[i].header.numTris * 3;
+		skinned_mesh.subsets[i].name = meshes[i].shader;
 		start += meshes[i].header.numTris * 3;
 	}
 

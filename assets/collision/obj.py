@@ -90,10 +90,12 @@ class Subset:
         self.texture = texture
 
     def __str__(self):
-        return '{} {}'.format(self.start, self.count)
+        return '{} {} {} ({})'.format(self.start, self.count, len(self.texture), self.texture)
 
     def pack(self):
-        return struct.pack('<ii', self.start, self.count)
+        data = struct.pack('<iii', self.start, self.count, len(self.texture))
+
+        return data + bytes(self.texture, 'ascii')
 
 class Mesh:
     def __init__(self):
