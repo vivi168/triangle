@@ -215,6 +215,12 @@ void frame_start()
     current_time = SDL_GetTicks();
 
     delta_time = (float)(current_time - last_time) / 1000;
+
+    {
+        float fps = 1.0f / delta_time;
+        std::string s = "FPS: " + std::to_string(fps);
+        SDL_SetWindowTitle(sdl_window, s.c_str());
+    }
 }
 
 void delay()
@@ -250,6 +256,7 @@ void create_window()
     }
 
     SDL_SetRelativeMouseMode(SDL_TRUE);
+    SDL_GL_SetSwapInterval(0);
 }
 
 const char* read_shader(char const* filename)
@@ -489,7 +496,7 @@ void mainloop()
         }
 
         render();
-        delay();
+        //delay();
     }
 }
 
