@@ -41,6 +41,8 @@ enum Location {
     BLEND_WEIGHTS_LOC
 };
 
+#define UBO_MATRICES_LOC 0
+
 struct GlMesh {
     GLuint vertex_buffer_obj, element_buffer_obj;
     GLuint vertex_array_obj;
@@ -201,6 +203,8 @@ Model mymodel; // For transformation
 MD5Model md5m;
 MD5Anim md5a;
 GlMesh mesh; // holds data on GPU
+
+GLuint ubo_matrices;
 
 MD5AnimInfo animinfo;
 bool animated = false;
@@ -363,8 +367,23 @@ void init()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 
-    loaded_shaders["skinned"] = load_shader("skinned");
-    loaded_shaders["static"] = load_shader("static");
+    {
+        loaded_shaders["skinned"] = load_shader("skinned");
+        loaded_shaders["static"] = load_shader("static");
+
+        GLuint skinned_blockindex = glGetUniformBlockIndex(loaded_shaders["skinned"], "Matrices");
+        GLuint static_blockindex = glGetUniformBlockIndex(loaded_shaders["static"], "Matrices");
+
+        glUniformBlockBinding(loaded_shaders["skinned"], skinned_blockindex, UBO_MATRICES_LOC);
+        glUniformBlockBinding(loaded_shaders["static"], static_blockindex, UBO_MATRICES_LOC);
+
+        glGenBuffers(1, &ubo_matrices);
+        glBindBuffer(GL_UNIFORM_BUFFER, ubo_matrices);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), 0, GL_STATIC_DRAW);
+
+        //glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        glBindBufferRange(GL_UNIFORM_BUFFER, 0, ubo_matrices, 0, sizeof(glm::mat4));
+    }
 
     SkinnedMesh mesh3d = md5m.prepare();
     mesh.init(mesh3d);
@@ -396,15 +415,18 @@ void render()
     glUseProgram(loaded_shaders[mesh.program]);
     
     {
-        glm::mat4 mvp;
-
         glm::mat4 p = glm::perspective(camera.zoom(), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 1000.0f);
         glm::mat4 v = camera.look_at();
         glm::mat4 m = mymodel.model_mat();
-        mvp = p * v * m;
 
-        GLuint mvp_loc = glGetUniformLocation(loaded_shaders[mesh.program], "mvp");
-        glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
+        glm::mat4 pv = p * v;
+
+        glBindBuffer(GL_UNIFORM_BUFFER, ubo_matrices);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(pv));
+        //glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+        GLuint mvp_loc = glGetUniformLocation(loaded_shaders[mesh.program], "model");
+        glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(m));
     }
 
     {
@@ -483,7 +505,6 @@ void process_input()
 
 void mainloop()
 {
-    last_time = SDL_GetTicks();
     current_time = SDL_GetTicks();
     delta_time = 0.0f;
 

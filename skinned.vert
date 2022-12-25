@@ -11,7 +11,11 @@ out VertexData {
     vec2 texture_uv;
 } o;
 
-uniform mat4 mvp;
+layout (std140) uniform Matrices {
+    mat4 pv;
+};
+
+uniform mat4 model;
 uniform mat4 bones[MAX_BONES];
 
 void main()
@@ -26,7 +30,7 @@ void main()
 
     vec4 position = transform * vec4(in_position, 1.0);
 
-    gl_Position =  mvp * position;
+    gl_Position =  pv * model * position;
 
     o.texture_uv = in_uv;
 }
