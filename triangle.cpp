@@ -44,7 +44,7 @@ enum Location {
 struct GlMesh {
     GLuint vertex_buffer_obj, element_buffer_obj;
     GLuint vertex_array_obj;
-    GLuint program;
+    std::string program;
 
     std::vector<Subset> subsets;
     std::vector<GLuint> textures; // TODO : allow for multiple textures (normal map, etc)
@@ -57,7 +57,7 @@ struct GlMesh {
         int numIndices = mesh3d.indices.size();
         subsets = mesh3d.subsets;
 
-        program = loaded_shaders["skinned"];
+        program = "skinned";
 
         textures.resize(subsets.size());
         glGenTextures(subsets.size(), textures.data());
@@ -124,13 +124,13 @@ struct GlMesh {
         animated = true;
     }
 
-    void init(std::string filename)
+    void init(const Mesh& mesh3d)
     {
-        Mesh mesh3d = Obj::prepare(filename.c_str());
-
         int numVerts = mesh3d.vertices.size();
         int numIndices = mesh3d.indices.size();
         subsets = mesh3d.subsets;
+
+        program = "static";
 
         printf("init static gl mesh v %d i %d\n", numVerts, numIndices);
 
@@ -364,9 +364,12 @@ void init()
     }
 
     loaded_shaders["skinned"] = load_shader("skinned");
+    loaded_shaders["static"] = load_shader("static");
 
     SkinnedMesh mesh3d = md5m.prepare();
     mesh.init(mesh3d);
+
+    Mesh s_mesh3d = Obj::prepare("assets/collision/cube.bin");
 
     // init model
     {
@@ -390,7 +393,7 @@ void render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    glUseProgram(mesh.program);
+    glUseProgram(loaded_shaders[mesh.program]);
     
     {
         glm::mat4 mvp;
@@ -400,7 +403,7 @@ void render()
         glm::mat4 m = mymodel.model_mat();
         mvp = p * v * m;
 
-        GLuint mvp_loc = glGetUniformLocation(mesh.program, "mvp");
+        GLuint mvp_loc = glGetUniformLocation(loaded_shaders[mesh.program], "mvp");
         glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(mvp));
     }
 
@@ -416,7 +419,7 @@ void render()
 #else
             sprintf(loc, "bones[%d]", i);
 #endif
-            GLuint bones_loc = glGetUniformLocation(mesh.program, loc);
+            GLuint bones_loc = glGetUniformLocation(loaded_shaders[mesh.program], loc);
             glm::mat4 final_bones = bones[i] * inv[i];
             glUniformMatrix4fv(bones_loc, 1, GL_FALSE, glm::value_ptr(final_bones));
         }
@@ -427,7 +430,7 @@ void render()
     int i = 0;
     for (const auto& subset : mesh.subsets) {
         glActiveTexture(GL_TEXTURE0);
-        glUniform1i(glGetUniformLocation(mesh.program, "texture_sampler"), 0);
+        glUniform1i(glGetUniformLocation(loaded_shaders[mesh.program], "texture_sampler"), 0);
         glBindTexture(GL_TEXTURE_2D, mesh.textures[i++]);
 
         glDrawElements(GL_TRIANGLES, subset.header.count, GL_UNSIGNED_INT, (void*)(sizeof(int) * subset.header.start));
@@ -504,8 +507,6 @@ int main(int argc, char **argv)
 {
     md5m.read("assets/md5model.bin");
     md5a.read("assets/md5anim.bin");
-
-    Obj::prepare("assets/collision/cube.bin");
     
     {
         // TODO -> have anim info as part of anim ?
