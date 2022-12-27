@@ -77,7 +77,7 @@ struct MD5Anim {
 	std::vector<std::vector<MD5Joint>> frameJoints; // frameJoints[numFrames][numJoints]
 
 	void read(const char* filename);
-	std::vector<glm::mat4> bone_matrices(int frame);
+	std::vector<glm::mat4> bone_matrices(int frame) const;
 };
 
 struct MD5AnimInfo {

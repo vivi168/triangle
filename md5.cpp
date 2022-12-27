@@ -209,7 +209,7 @@ std::vector<glm::mat4> MD5Model::inv_bindpose_matrices() const
 	return matrices;
 }
 
-std::vector<glm::mat4> MD5Anim::bone_matrices(int frame)
+std::vector<glm::mat4> MD5Anim::bone_matrices(int frame) const
 {
 	std::vector<glm::mat4> matrices;
 

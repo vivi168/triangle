@@ -31,6 +31,29 @@
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 
+struct Model {
+    glm::vec3 translate;
+    glm::vec3 rotate;
+    glm::vec3 scale;
+
+    glm::mat4 model_mat() const
+    {
+        glm::mat4 mat = glm::mat4(1.0f);
+        mat = glm::translate(mat, translate);
+        mat = glm::scale(mat, scale);
+
+        return mat;
+    }
+};
+
+struct SkinnedModel : Model {
+    std::vector<glm::mat4> inv_bind_pose;
+
+    // TODO: unordered_map of animations ?
+    // animinfo + std::string current animation ?
+};
+
+
 std::unordered_map<std::string, GLuint> loaded_shaders;
 GLuint load_shader(std::string);
 
@@ -160,6 +183,47 @@ struct GlMesh {
         animated = false;
     }
 
+    // draw static
+    void draw(const glm::mat4 model_mat)
+    {
+
+    }
+
+    // draw skinned
+    void draw(const SkinnedModel& model, const MD5Anim& animation, const MD5AnimInfo& anim_info)
+    {
+        glm::mat4 model_mat = model.model_mat();
+        GLuint model_loc = glGetUniformLocation(loaded_shaders[program], "model");
+        glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model_mat));
+
+        {
+            std::vector<glm::mat4> bones = animation.bone_matrices(anim_info.currFrame);
+
+            for (int i = 0; i < animation.header.numJoints; i++) {
+                char loc[10];
+#ifdef _WIN32
+                sprintf_s(loc, 10, "bones[%d]", i);
+#else
+                sprintf(loc, "bones[%d]", i);
+#endif
+                GLuint bones_loc = glGetUniformLocation(loaded_shaders[program], loc);
+                glm::mat4 final_bones = bones[i] * model.inv_bind_pose[i];
+                glUniformMatrix4fv(bones_loc, 1, GL_FALSE, glm::value_ptr(final_bones));
+            }
+        }
+
+        glBindVertexArray(vertex_array_obj);
+
+        int i = 0;
+        for (const auto& subset : subsets) {
+            glActiveTexture(GL_TEXTURE0);
+            glUniform1i(glGetUniformLocation(loaded_shaders[program], "texture_sampler"), 0);
+            glBindTexture(GL_TEXTURE_2D, textures[i++]);
+
+            glDrawElements(GL_TRIANGLES, subset.header.count, GL_UNSIGNED_INT, (void*)(sizeof(int) * subset.header.start));
+        }
+    }
+
     void destroy()
     {
         if (!textures.empty())
@@ -171,25 +235,6 @@ struct GlMesh {
     }
 };
 
-struct Model {
-    glm::vec3 translate;
-    glm::vec3 rotate;
-    glm::vec3 scale;
-
-    glm::mat4 model_mat()
-    {
-        glm::mat4 mat = glm::mat4(1.0f);
-        mat = glm::translate(mat, translate);
-        mat = glm::scale(mat, scale);
-
-        return mat;
-    }
-
-    void draw(const Camera* camera, const GlMesh* m)
-    {
-    }
-};
-
 SDL_Window* sdl_window;
 SDL_GLContext context;
 SDL_Event event;
@@ -198,7 +243,7 @@ Uint32 last_time;
 Uint32 current_time;
 
 Camera camera;
-Model mymodel; // For transformation
+SkinnedModel mymodel; // For transformation
 
 MD5Model md5m;
 MD5Anim md5a;
@@ -367,6 +412,7 @@ void init()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 
+    // init shaders
     {
         loaded_shaders["skinned"] = load_shader("skinned");
         loaded_shaders["static"] = load_shader("static");
@@ -385,15 +431,30 @@ void init()
         glBindBufferRange(GL_UNIFORM_BUFFER, 0, ubo_matrices, 0, sizeof(glm::mat4));
     }
 
-    SkinnedMesh mesh3d = md5m.prepare();
-    mesh.init(mesh3d);
-
-    Mesh s_mesh3d = Obj::prepare("assets/collision/cube.bin");
-
     // init model
     {
+        md5m.read("assets/md5model.bin");
+        md5a.read("assets/md5anim.bin");
+
+        {
+            // TODO -> have anim info as part of anim ?
+            animinfo.currFrame = 0;
+            animinfo.nextFrame = 1;
+
+            animinfo.time = 0;
+            animinfo.frameDuration = 1.0 / md5a.header.frameRate;
+            animated = true;
+        }
+
+        SkinnedMesh mesh3d = md5m.prepare();
+        mesh.init(mesh3d);
+
+        Mesh s_mesh3d = Obj::prepare("assets/collision/cube.bin");
+
         mymodel.translate = glm::vec3(0.0f, -3.0f, 0.0f);
         mymodel.scale = glm::vec3(1.0f, 1.0f, 1.0f);
+
+        mymodel.inv_bind_pose = md5m.inv_bindpose_matrices();
     }
 }
 
@@ -417,46 +478,14 @@ void render()
     {
         glm::mat4 p = glm::perspective(camera.zoom(), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 1000.0f);
         glm::mat4 v = camera.look_at();
-        glm::mat4 m = mymodel.model_mat();
-
         glm::mat4 pv = p * v;
 
         glBindBuffer(GL_UNIFORM_BUFFER, ubo_matrices);
         glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(pv));
         //glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-        GLuint mvp_loc = glGetUniformLocation(loaded_shaders[mesh.program], "model");
-        glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, glm::value_ptr(m));
     }
 
-    {
-        // TODO : if not animated, push identity matrix
-        std::vector<glm::mat4> inv = md5m.inv_bindpose_matrices(); // TODO compute only once per model
-        std::vector<glm::mat4> bones = md5a.bone_matrices(animinfo.currFrame);
-
-        for (int i = 0; i < md5a.header.numJoints; i++) {
-            char loc[10];
-#ifdef _WIN32
-            sprintf_s(loc, 10, "bones[%d]", i);
-#else
-            sprintf(loc, "bones[%d]", i);
-#endif
-            GLuint bones_loc = glGetUniformLocation(loaded_shaders[mesh.program], loc);
-            glm::mat4 final_bones = bones[i] * inv[i];
-            glUniformMatrix4fv(bones_loc, 1, GL_FALSE, glm::value_ptr(final_bones));
-        }
-    }
-
-    glBindVertexArray(mesh.vertex_array_obj);
-
-    int i = 0;
-    for (const auto& subset : mesh.subsets) {
-        glActiveTexture(GL_TEXTURE0);
-        glUniform1i(glGetUniformLocation(loaded_shaders[mesh.program], "texture_sampler"), 0);
-        glBindTexture(GL_TEXTURE_2D, mesh.textures[i++]);
-
-        glDrawElements(GL_TRIANGLES, subset.header.count, GL_UNSIGNED_INT, (void*)(sizeof(int) * subset.header.start));
-    }
+    mesh.draw(mymodel, md5a, animinfo);
 
     SDL_GL_SwapWindow(sdl_window);
 }
@@ -526,25 +555,11 @@ void mainloop()
 
 int main(int argc, char **argv)
 {
-    md5m.read("assets/md5model.bin");
-    md5a.read("assets/md5anim.bin");
-    
-    {
-        // TODO -> have anim info as part of anim ?
-        animinfo.currFrame = 0;
-        animinfo.nextFrame = 1;
-
-        animinfo.time = 0;
-        animinfo.frameDuration = 1.0 / md5a.header.frameRate;
-        animated = true;
-    }
-
     init();
 
     mainloop();
 
     destroy();
 
-    // TODO: free model, mesh
     return 0;
 }

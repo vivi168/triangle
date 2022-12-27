@@ -17,13 +17,25 @@ struct Vertex {
 	vec2 uv;
 };
 
+struct Texture {
+	std::string filename;
+	std::string sampler;
+};
+
+struct Material {
+	std::vector<Texture> textures;
+	vec3 color;
+	std::string shader;
+};
+
+// TODO : private struct, only used in reading loop ?
 struct SubsetHeader {
 	int start, count, nameSize;
 };
 
 struct Subset {
 	SubsetHeader header;
-	std::string name;
+	std::string name; // TODO: Material instead ?
 
 	int getNameSize()
 	{
