@@ -11,12 +11,17 @@ out VertexData {
     vec2 texture_uv;
 } o;
 
-layout (std140) uniform Matrices {
+layout (std140) uniform PassUBO {
     mat4 pv;
 };
 
-uniform mat4 model;
-uniform mat4 bones[MAX_BONES];
+layout (std140) uniform ModelUBO {
+    mat4 model;
+};
+
+layout (std140) uniform SkinnedUBO {
+    mat4 bones[MAX_BONES];
+};
 
 void main()
 {

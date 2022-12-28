@@ -31,6 +31,18 @@
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 
+struct PassUBO {
+    glm::mat4 pv;
+};
+
+struct ModelUBO {
+    glm::mat4 model;
+};
+
+struct SkinnedUBO {
+    glm::mat4 bones[MAX_BONES];
+};
+
 struct Model {
     glm::vec3 translate;
     glm::vec3 rotate;
@@ -64,7 +76,14 @@ enum Location {
     BLEND_WEIGHTS_LOC
 };
 
-#define UBO_MATRICES_LOC 0
+#define PASS_UBO_LOC 0
+#define MODEL_UBO_LOC 1
+#define SKINNED_UBO_LOC 2
+
+GLuint pass_ubo;
+GLuint model_ubo;
+GLuint skinned_ubo;
+
 
 struct GlMesh {
     GLuint vertex_buffer_obj, element_buffer_obj;
@@ -193,23 +212,23 @@ struct GlMesh {
     void draw(const SkinnedModel& model, const MD5Anim& animation, const MD5AnimInfo& anim_info)
     {
         glm::mat4 model_mat = model.model_mat();
-        GLuint model_loc = glGetUniformLocation(loaded_shaders[program], "model");
-        glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model_mat));
+
+        glBindBuffer(GL_UNIFORM_BUFFER, model_ubo);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(ModelUBO), glm::value_ptr(model_mat));
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
         {
             std::vector<glm::mat4> bones = animation.bone_matrices(anim_info.currFrame);
+            std::vector<glm::mat4> finalBones;
 
             for (int i = 0; i < animation.header.numJoints; i++) {
-                char loc[10];
-#ifdef _WIN32
-                sprintf_s(loc, 10, "bones[%d]", i);
-#else
-                sprintf(loc, "bones[%d]", i);
-#endif
-                GLuint bones_loc = glGetUniformLocation(loaded_shaders[program], loc);
                 glm::mat4 final_bones = bones[i] * model.inv_bind_pose[i];
-                glUniformMatrix4fv(bones_loc, 1, GL_FALSE, glm::value_ptr(final_bones));
+                finalBones.push_back(final_bones);
             }
+
+            glBindBuffer(GL_UNIFORM_BUFFER, skinned_ubo);
+            glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4) * finalBones.size(), finalBones.data());
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
         }
 
         glBindVertexArray(vertex_array_obj);
@@ -248,8 +267,6 @@ SkinnedModel mymodel; // For transformation
 MD5Model md5m;
 MD5Anim md5a;
 GlMesh mesh; // holds data on GPU
-
-GLuint ubo_matrices;
 
 MD5AnimInfo animinfo;
 bool animated = false;
@@ -417,18 +434,45 @@ void init()
         loaded_shaders["skinned"] = load_shader("skinned");
         loaded_shaders["static"] = load_shader("static");
 
-        GLuint skinned_blockindex = glGetUniformBlockIndex(loaded_shaders["skinned"], "Matrices");
-        GLuint static_blockindex = glGetUniformBlockIndex(loaded_shaders["static"], "Matrices");
+        // Pass UBO
 
-        glUniformBlockBinding(loaded_shaders["skinned"], skinned_blockindex, UBO_MATRICES_LOC);
-        glUniformBlockBinding(loaded_shaders["static"], static_blockindex, UBO_MATRICES_LOC);
+        GLuint skinned_passubo_blockindex = glGetUniformBlockIndex(loaded_shaders["skinned"], "PassUBO");
+        GLuint static_passubo_blockindex = glGetUniformBlockIndex(loaded_shaders["static"], "PassUBO");
 
-        glGenBuffers(1, &ubo_matrices);
-        glBindBuffer(GL_UNIFORM_BUFFER, ubo_matrices);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), 0, GL_STATIC_DRAW);
+        glUniformBlockBinding(loaded_shaders["skinned"], skinned_passubo_blockindex, PASS_UBO_LOC);
+        glUniformBlockBinding(loaded_shaders["static"], static_passubo_blockindex, PASS_UBO_LOC);
 
-        //glBindBuffer(GL_UNIFORM_BUFFER, 0);
-        glBindBufferRange(GL_UNIFORM_BUFFER, 0, ubo_matrices, 0, sizeof(glm::mat4));
+        glGenBuffers(1, &pass_ubo);
+        glBindBuffer(GL_UNIFORM_BUFFER, pass_ubo);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(PassUBO), 0, GL_STATIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        glBindBufferBase(GL_UNIFORM_BUFFER, PASS_UBO_LOC, pass_ubo);
+
+        // Model UBO
+        
+        GLuint skinned_modelubo_blockindex = glGetUniformBlockIndex(loaded_shaders["skinned"], "ModelUBO");
+        GLuint static_modelubo_blockindex = glGetUniformBlockIndex(loaded_shaders["static"], "ModelUBO");
+
+        glUniformBlockBinding(loaded_shaders["skinned"], skinned_modelubo_blockindex, MODEL_UBO_LOC);
+        glUniformBlockBinding(loaded_shaders["static"], static_modelubo_blockindex, MODEL_UBO_LOC);
+
+        glGenBuffers(1, &model_ubo);
+        glBindBuffer(GL_UNIFORM_BUFFER, model_ubo);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(ModelUBO), 0, GL_STATIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        glBindBufferBase(GL_UNIFORM_BUFFER, MODEL_UBO_LOC, model_ubo);
+
+        // Skinned UBO
+
+        GLuint skinned_ubo_blockindex = glGetUniformBlockIndex(loaded_shaders["skinned"], "SkinnedUBO");
+
+        glUniformBlockBinding(loaded_shaders["skinned"], skinned_ubo_blockindex, SKINNED_UBO_LOC);
+
+        glGenBuffers(1, &skinned_ubo);
+        glBindBuffer(GL_UNIFORM_BUFFER, skinned_ubo);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(SkinnedUBO), 0, GL_STATIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        glBindBufferBase(GL_UNIFORM_BUFFER, SKINNED_UBO_LOC, skinned_ubo);
     }
 
     // init model
@@ -480,9 +524,9 @@ void render()
         glm::mat4 v = camera.look_at();
         glm::mat4 pv = p * v;
 
-        glBindBuffer(GL_UNIFORM_BUFFER, ubo_matrices);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(pv));
-        //glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        glBindBuffer(GL_UNIFORM_BUFFER, pass_ubo);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PassUBO), glm::value_ptr(pv));
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
     mesh.draw(mymodel, md5a, animinfo);
