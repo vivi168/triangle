@@ -49,7 +49,7 @@ void MD5Model::read(const char* filename)
 		// Texture name
 		mesh.shader.resize(mesh.header.shaderSize);
 		fread(mesh.shader.data(), sizeof(char), mesh.header.shaderSize, fp);
-		
+
 		std::cout << mesh.shader << " " << mesh.header.shaderSize << "\n";
 	}
 }

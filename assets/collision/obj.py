@@ -84,18 +84,18 @@ class ObjFace:
 
 
 class Subset:
-    def __init__(self, texture='', start=0):
+    def __init__(self, name='', start=0):
         self.start = start
         self.count = 0
-        self.texture = texture
+        self.name = name
 
     def __str__(self):
-        return '{} {} {} ({})'.format(self.start, self.count, len(self.texture), self.texture)
+        return '{} {} {}'.format(self.start, self.count, self.name)
 
     def pack(self):
-        data = struct.pack('<iii', self.start, self.count, len(self.texture))
+        data = struct.pack('<iii', self.start, self.count, len(self.name))
 
-        return data + bytes(self.texture, 'ascii')
+        return data + bytes(self.name, 'ascii')
 
 class Mesh:
     def __init__(self):

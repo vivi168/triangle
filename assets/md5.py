@@ -22,6 +22,9 @@ class Vec3:
     def pack(self):
         return struct.pack('<fff', self.x, self.z, -self.y)
 
+    def __str__(self):
+        return '{:.6f} {:.6f} {:.6f}'.format(self.x, self.z, -self.y)
+
     def trans4x4(self):
         m = np.identity(4)
         m[0][3] = self.x
