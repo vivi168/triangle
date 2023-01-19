@@ -26,7 +26,8 @@ class Vec3:
         self.z = z
 
     def pack(self):
-        return struct.pack('<fff', self.x, self.y, self.z)
+        pad = 0
+        return struct.pack('<ffff', self.x, self.y, self.z, pad)
 
     def __str__(self):
         return '{:.6f} {:.6f} {:.6f}'.format(self.x, self.y, self.z)
@@ -41,8 +42,11 @@ class Vertex:
         self.normal = n
         self.uv = t
 
+    def pad(self):
+        return struct.pack('<ii', 0 ,0)
+
     def pack(self):
-        return self.position.pack() + self.normal.pack() + self.uv.pack()
+        return self.position.pack() + self.normal.pack() + self.uv.pack() + self.pad()
 
     def __str__(self):
         return '({}) ({}) ({})'.format(self.position, self.normal, self.uv)
@@ -94,8 +98,14 @@ class Subset:
 
     def pack(self):
         data = struct.pack('<iii', self.start, self.count, len(self.name))
+        data += bytes(self.name, 'ascii')
 
-        return data + bytes(self.name, 'ascii')
+        size = len(data)
+        if size % 4 != 0:
+            padding = ((size + 0x3) & -0x4) - size
+            data += struct.pack('x') * padding
+
+        return data
 
 class Mesh:
     def __init__(self):
@@ -189,6 +199,8 @@ class Mesh:
         print('*** Header ***')
         print(len(self.vertices), len(self.tris), len(self.subsets))
         data += struct.pack('<iii', len(self.vertices), len(self.tris), len(self.subsets))
+
+        data += struct.pack('<i', 0) # keep data aligned for reading simd
 
         print('*** Vertices ***')
         for v in self.vertices:
