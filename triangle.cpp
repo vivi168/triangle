@@ -493,7 +493,7 @@ void init()
         SkinnedMesh mesh3d = md5m.prepare();
         mesh.init(mesh3d);
 
-        Mesh s_mesh3d = Obj::prepare("assets/collision/cube.bin");
+        /* Mesh s_mesh3d = Obj::prepare("assets/collision/cube.bin"); */
 
         mymodel.translate = glm::vec3(0.0f, -3.0f, 0.0f);
         mymodel.scale = glm::vec3(1.0f, 1.0f, 1.0f);
